@@ -48,16 +48,34 @@ class FullAdder extends Module {
     /*
      * TODO: Define IO ports of a half adder as presented in the lecture
      */
+    val aInput = Input(Bool())
+    val bInput = Input(Bool())
+    val cInput = Input(Bool())
+    val sOutput = Output(Bool())
+    val cOutput = Output(Bool())
   })
 
   /*
    * TODO: Instanciate the two half adders you want to use based on your HalfAdder class
    */
+  val halfAdder1 = Module(new HalfAdder())
+  val halfAdder2 = Module(new HalfAdder())
 
   /*
    * TODO: Describe output behaviour based on the input values and the internal signals
    */
 
+  // calculate a + b
+  halfAdder1.io.aInput := io.aInput
+  halfAdder1.io.bInput := io.bInput
+
+  // calculate a + b + ci
+  halfAdder2.io.aInput := halfAdder1.io.sOutput
+  halfAdder2.io.bInput := io.cInput
+
+  // wire s and carry output
+  io.sOutput := halfAdder2.io.sOutput
+  io.cOutput := halfAdder1.io.cOutput | halfAdder2.io.cOutput
 }
 
 /** 4-bit Adder class
