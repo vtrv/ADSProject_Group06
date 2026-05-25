@@ -1,4 +1,5 @@
 scalaVersion := "2.12.13"
+ThisBuild / scalafmtConfig := file("../.scalafmt.conf")
 
 scalacOptions ++= Seq(
   "-deprecation",
