@@ -7,6 +7,7 @@
 package readserial
 
 import chisel3._
+import chisel3.experimental.ChiselEnum
 import chisel3.util._
 
 /** controller class */
@@ -16,17 +17,50 @@ class Controller extends Module {
     /*
      * TODO: Define IO ports of a the component as stated in the documentation
      */
+    val rxdInput = Input(Bool())
+    val cntStInput = Input(Bool())
+    val cntEnOutput = Output(Bool())
+    val validOutput = Output(Bool())
   })
 
   // internal variables
   /*
    * TODO: Define internal variables (registers and/or wires), if needed
    */
+  object State extends ChiselEnum {
+    val sIdle, sCount = Value
+  }
+
+  val stateReg = RegInit(State.sIdle)
+  val validReg = RegInit(false.B)
 
   // state machine
   /*
    * TODO: Describe functionality if the controller as a state machine
    */
+
+  io.cntEnOutput := false.B
+  io.validOutput := validReg
+  validReg := false.B // one-cycle pulse when set
+
+  switch(stateReg) {
+    is(State.sIdle) {
+      // if rxd is 0, then start counting
+      when(io.rxdInput === false.B) {
+        stateReg := State.sCount
+      }
+    }
+    is(State.sCount) {
+      // enable counting and wait until cntStInput is true, then go back to idle state
+      io.cntEnOutput := true.B
+      when(io.cntStInput === true.B) {
+        // Pulse valid for one cycle after the 8th data bit has been shifted in.
+        validReg := true.B
+        // Always return to idle; a back-to-back start bit will be detected there.
+        stateReg := State.sIdle
+      }
+    }
+  }
 
 }
 
@@ -37,17 +71,32 @@ class Counter extends Module {
     /*
      * TODO: Define IO ports of a the component as stated in the documentation
      */
+    val cntEnInput = Input(Bool())
+    val cntStOutput = Output(Bool())
   })
 
   // internal variables
   /*
    * TODO: Define internal variables (registers and/or wires), if needed
    */
+  val cntReg = RegInit(0.U(3.W))
 
   // state machine
   /*
    * TODO: Describe functionality if the counter as a state machine
    */
+
+  when(io.cntEnInput === true.B) {
+    cntReg := cntReg + 1.U
+  }.otherwise {
+    cntReg := 0.U
+  }
+
+  when(cntReg === 7.U) {
+    io.cntStOutput := true.B // Tell the controller we are done
+  }.otherwise {
+    io.cntStOutput := false.B
+  }
 
 }
 
@@ -58,17 +107,24 @@ class ShiftRegister extends Module {
     /*
      * TODO: Define IO ports of a the component as stated in the documentation
      */
+    val rxdInput = Input(Bool())
+    val dataOutput = Output(UInt(8.W))
   })
 
   // internal variables
   /*
    * TODO: Define internal variables (registers and/or wires), if needed
    */
+  val shiftReg = RegInit(0.U(8.W))
 
   // functionality
   /*
    * TODO: Describe functionality if the shift register
    */
+  // rxd starts with the MSB, so shift left and add new bit at the end
+  shiftReg := Cat(shiftReg(6, 0), io.rxdInput)
+
+  io.dataOutput := shiftReg
 }
 
 /** The last warm-up task deals with a more complex component. Your goal is to design a serial
@@ -88,21 +144,33 @@ class ReadSerial extends Module {
     /*
      * TODO: Define IO ports of a the component as stated in the documentation
      */
+    val rxdInput = Input(Bool())
+    val dataOutput = Output(UInt(8.W))
+    val validOutput = Output(Bool())
   })
 
   // instanciation of modules
   /*
    * TODO: Instanciate the modules that you need
    */
+  val controller = Module(new Controller())
+  val counter = Module(new Counter())
+  val shiftRegister = Module(new ShiftRegister())
 
   // connections between modules
   /*
    * TODO: connect the signals between the modules
    */
+  controller.io.rxdInput := io.rxdInput
+  counter.io.cntEnInput := controller.io.cntEnOutput
+  shiftRegister.io.rxdInput := io.rxdInput
+  controller.io.cntStInput := counter.io.cntStOutput
 
   // global I/O
   /*
    * TODO: Describe output behaviour based on the input values and the internal signals
    */
+  io.dataOutput := shiftRegister.io.dataOutput
+  io.validOutput := controller.io.validOutput
 
 }
