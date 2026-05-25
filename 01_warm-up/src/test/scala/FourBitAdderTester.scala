@@ -29,6 +29,25 @@ class FourBitAdderTester extends AnyFlatSpec with ChiselScalatestTester {
       /*
        * TODO: Insert your test cases
        */
+      // println("Starting 4-bit adder test...")
+      for (a <- 0 to 15) {
+        for (b <- 0 to 15) {
+            val result = a + b
+
+            val sResult = result % 16
+            // If the true result is greater than 15, we have an overflow (Carry Out = 1)
+            val cResult = if (result > 15) 1 else 0
+            // println(s"Testing a=$a, b=$b, expecting s=$sResult and co=$cResult")
+
+            dut.io.aInput.poke(a.U)
+            dut.io.bInput.poke(b.U)
+
+            dut.clock.step(1)
+
+            dut.io.sOutput.expect(sResult.U)
+            dut.io.cOutput.expect(cResult.B)
+        }
+      }
 
     }
   }
