@@ -82,4 +82,38 @@ class ReadSerialTester extends AnyFlatSpec with ChiselScalatestTester {
       idleBus(dut, cycles = 1) // verify valid de-asserts after the last frame
     }
   }
+
+  it should "abort an ongoing transmission when reset is asserted" in {
+    test(new ReadSerial).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      idleBus(dut)
+
+      val abortedByte = 0xa5
+
+      // Start receiving a frame
+      pokeRxdBit(dut, bit = false)
+      dut.clock.step(1)
+      dut.io.validOutput.expect(false.B)
+
+      // Send a few data bits (MSB first)
+      for (i <- 7 to 5 by -1) {
+        pokeRxdBit(dut, getBit(abortedByte, i))
+        dut.clock.step(1)
+        dut.io.validOutput.expect(false.B)
+      }
+
+      // Assert reset mid-frame: should abort reception and keep valid low
+      dut.reset.poke(true.B)
+      idleBus(dut, 2) // keep the bus idle during reset
+      dut.reset.poke(false.B)
+
+      // After reset, ensure no leftover valid pulse occurs while the bus is idle
+      idleBus(dut, cycles = 10)
+
+      // A new frame should only be received after a new start bit occurs
+      val newByte = 0x3c
+      sendFrame(dut, newByte)
+      idleBus(dut)
+    }
+  }
+
 }
