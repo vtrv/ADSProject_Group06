@@ -63,6 +63,7 @@
       <a href="#getting-started">Getting Started</a>
       <ul>
         <li><a href="#prerequisites">Prerequisites</a></li>
+        <li><a href="#code-formatting-scalafmt">Code Formatting (scalafmt)</a></li>
         <li><a href="#installation">Installation</a></li>
       </ul>
     </li>
@@ -112,6 +113,25 @@ Git is the most common version control system in the world today. GitHub, on the
 ```sh
 sudo apt install git-all
 ```
+
+### Code Formatting (scalafmt)
+
+This repository uses [Scalafmt](https://scalameta.org/scalafmt/) for consistent Scala/Chisel formatting (configuration: `.scalafmt.conf` in the repo root).
+
+Run these commands **from inside** an assignment folder that contains a `build.sbt` (e.g. `01_warm-up/`, `02_ALU/`, or `03_RV32I-pipeline/`).
+
+Format all Scala sources and SBT files:
+```sh
+cd 01_warm-up
+sbt scalafmtAll scalafmtSbt
+```
+
+Check formatting (useful for CI / pre-push):
+```sh
+cd 01_warm-up
+sbt scalafmtCheckAll scalafmtSbtCheck
+```
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ### How to Git
