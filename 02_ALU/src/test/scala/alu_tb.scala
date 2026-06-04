@@ -39,14 +39,14 @@ class ALUAddTest extends AnyFlatSpec with ChiselScalatestTester {
       dut.clock.step(1)
 
       // Wraparound: 0xFFFF_FFFF + 1 == 0
-      dut.io.operandA.poke(0xFFFFFFFFL.U)
+      dut.io.operandA.poke(0xffffffffL.U)
       dut.io.operandB.poke(1.U)
       dut.io.operation.poke(ALUOp.ADD)
       dut.io.aluResult.expect(0.U)
       dut.clock.step(1)
 
       // Large values
-      dut.io.operandA.poke(0x7FFFFFFFL.U)
+      dut.io.operandA.poke(0x7fffffffL.U)
       dut.io.operandB.poke(1.U)
       dut.io.operation.poke(ALUOp.ADD)
       dut.io.aluResult.expect(0x80000000L.U)
@@ -81,12 +81,12 @@ class ALUSubTest extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.operandA.poke(0.U)
       dut.io.operandB.poke(1.U)
       dut.io.operation.poke(ALUOp.SUB)
-      dut.io.aluResult.expect(0xFFFFFFFFL.U)
+      dut.io.aluResult.expect(0xffffffffL.U)
       dut.clock.step(1)
 
       // Subtract from itself
-      dut.io.operandA.poke(0xABCDEF01L.U)
-      dut.io.operandB.poke(0xABCDEF01L.U)
+      dut.io.operandA.poke(0xabcdef01L.U)
+      dut.io.operandB.poke(0xabcdef01L.U)
       dut.io.operation.poke(ALUOp.SUB)
       dut.io.aluResult.expect(0.U)
       dut.clock.step(1)
@@ -102,20 +102,20 @@ class ALUAndTest extends AnyFlatSpec with ChiselScalatestTester {
     test(new ALU).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
       dut.clock.setTimeout(0)
 
-      dut.io.operandA.poke(0xFFFF0000L.U)
-      dut.io.operandB.poke(0x0000FFFFL.U)
+      dut.io.operandA.poke(0xffff0000L.U)
+      dut.io.operandB.poke(0x0000ffffL.U)
       dut.io.operation.poke(ALUOp.AND)
       dut.io.aluResult.expect(0.U)
       dut.clock.step(1)
 
-      dut.io.operandA.poke(0xFFFFFFFFL.U)
-      dut.io.operandB.poke(0xA5A5A5A5L.U)
+      dut.io.operandA.poke(0xffffffffL.U)
+      dut.io.operandB.poke(0xa5a5a5a5L.U)
       dut.io.operation.poke(ALUOp.AND)
-      dut.io.aluResult.expect(0xA5A5A5A5L.U)
+      dut.io.aluResult.expect(0xa5a5a5a5L.U)
       dut.clock.step(1)
 
       // AND with zero → 0
-      dut.io.operandA.poke(0xDEADBEEFL.U)
+      dut.io.operandA.poke(0xdeadbeefL.U)
       dut.io.operandB.poke(0.U)
       dut.io.operation.poke(ALUOp.AND)
       dut.io.aluResult.expect(0.U)
@@ -139,24 +139,24 @@ class ALUOrTest extends AnyFlatSpec with ChiselScalatestTester {
     test(new ALU).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
       dut.clock.setTimeout(0)
 
-      dut.io.operandA.poke(0xFFFF0000L.U)
-      dut.io.operandB.poke(0x0000FFFFL.U)
+      dut.io.operandA.poke(0xffff0000L.U)
+      dut.io.operandB.poke(0x0000ffffL.U)
       dut.io.operation.poke(ALUOp.OR)
-      dut.io.aluResult.expect(0xFFFFFFFFL.U)
+      dut.io.aluResult.expect(0xffffffffL.U)
       dut.clock.step(1)
 
       // OR with zero → self
-      dut.io.operandA.poke(0xCAFEBABEL.U)
+      dut.io.operandA.poke(0xcafebabeL.U)
       dut.io.operandB.poke(0.U)
       dut.io.operation.poke(ALUOp.OR)
-      dut.io.aluResult.expect(0xCAFEBABEL.U)
+      dut.io.aluResult.expect(0xcafebabeL.U)
       dut.clock.step(1)
 
       // OR with all-ones → all-ones
       dut.io.operandA.poke(0.U)
-      dut.io.operandB.poke(0xFFFFFFFFL.U)
+      dut.io.operandB.poke(0xffffffffL.U)
       dut.io.operation.poke(ALUOp.OR)
-      dut.io.aluResult.expect(0xFFFFFFFFL.U)
+      dut.io.aluResult.expect(0xffffffffL.U)
       dut.clock.step(1)
     }
   }
@@ -171,17 +171,17 @@ class ALUXorTest extends AnyFlatSpec with ChiselScalatestTester {
       dut.clock.setTimeout(0)
 
       // XOR with self → 0
-      dut.io.operandA.poke(0xDEADBEEFL.U)
-      dut.io.operandB.poke(0xDEADBEEFL.U)
+      dut.io.operandA.poke(0xdeadbeefL.U)
+      dut.io.operandB.poke(0xdeadbeefL.U)
       dut.io.operation.poke(ALUOp.XOR)
       dut.io.aluResult.expect(0.U)
       dut.clock.step(1)
 
       // XOR with all-ones → bitwise NOT
-      dut.io.operandA.poke(0x0F0F0F0F.U)
-      dut.io.operandB.poke(0xFFFFFFFFL.U)
+      dut.io.operandA.poke(0x0f0f0f0f.U)
+      dut.io.operandB.poke(0xffffffffL.U)
       dut.io.operation.poke(ALUOp.XOR)
-      dut.io.aluResult.expect(0xF0F0F0F0L.U)
+      dut.io.aluResult.expect(0xf0f0f0f0L.U)
       dut.clock.step(1)
 
       // XOR with zero → self
@@ -210,15 +210,15 @@ class ALUSllTest extends AnyFlatSpec with ChiselScalatestTester {
       dut.clock.step(1)
 
       // Shift by 0 → unchanged
-      dut.io.operandA.poke(0xABCDEF01L.U)
+      dut.io.operandA.poke(0xabcdef01L.U)
       dut.io.operandB.poke(0.U)
       dut.io.operation.poke(ALUOp.SLL)
-      dut.io.aluResult.expect(0xABCDEF01L.U)
+      dut.io.aluResult.expect(0xabcdef01L.U)
       dut.clock.step(1)
 
       // Only lower 5 bits of operandB used: shamt = 1 (33 mod 32)
       dut.io.operandA.poke(1.U)
-      dut.io.operandB.poke(33.U)   // lower 5 bits = 1
+      dut.io.operandB.poke(33.U) // lower 5 bits = 1
       dut.io.operation.poke(ALUOp.SLL)
       dut.io.aluResult.expect(2.U)
       dut.clock.step(1)
@@ -256,10 +256,10 @@ class ALUSrlTest extends AnyFlatSpec with ChiselScalatestTester {
       dut.clock.step(1)
 
       // Shift by 0 → unchanged
-      dut.io.operandA.poke(0xDEADBEEFL.U)
+      dut.io.operandA.poke(0xdeadbeefL.U)
       dut.io.operandB.poke(0.U)
       dut.io.operation.poke(ALUOp.SRL)
-      dut.io.aluResult.expect(0xDEADBEEFL.U)
+      dut.io.aluResult.expect(0xdeadbeefL.U)
       dut.clock.step(1)
     }
   }
@@ -285,14 +285,14 @@ class ALUSraTest extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.operandA.poke(0x80000000L.U)
       dut.io.operandB.poke(1.U)
       dut.io.operation.poke(ALUOp.SRA)
-      dut.io.aluResult.expect(0xC0000000L.U)
+      dut.io.aluResult.expect(0xc0000000L.U)
       dut.clock.step(1)
 
       // Shift -1 (0xFFFFFFFF) by any amount → still 0xFFFFFFFF
-      dut.io.operandA.poke(0xFFFFFFFFL.U)
+      dut.io.operandA.poke(0xffffffffL.U)
       dut.io.operandB.poke(15.U)
       dut.io.operation.poke(ALUOp.SRA)
-      dut.io.aluResult.expect(0xFFFFFFFFL.U)
+      dut.io.aluResult.expect(0xffffffffL.U)
       dut.clock.step(1)
     }
   }
@@ -328,15 +328,15 @@ class ALUSltTest extends AnyFlatSpec with ChiselScalatestTester {
       dut.clock.step(1)
 
       // -1 (0xFFFFFFFF) < 0 in signed → 1
-      dut.io.operandA.poke(0xFFFFFFFFL.U)   // -1 signed
+      dut.io.operandA.poke(0xffffffffL.U) // -1 signed
       dut.io.operandB.poke(0.U)
       dut.io.operation.poke(ALUOp.SLT)
       dut.io.aluResult.expect(1.U)
       dut.clock.step(1)
 
-      // 0 < -1 (signed) → 0
+      // 0 > -1 (signed) → 0
       dut.io.operandA.poke(0.U)
-      dut.io.operandB.poke(0xFFFFFFFFL.U)   // -1 signed
+      dut.io.operandB.poke(0xffffffffL.U) // -1 signed
       dut.io.operation.poke(ALUOp.SLT)
       dut.io.aluResult.expect(0.U)
       dut.clock.step(1)
@@ -362,13 +362,13 @@ class ALUSltUTest extends AnyFlatSpec with ChiselScalatestTester {
       // 0xFFFFFFFF is the largest unsigned 32-bit value.
       // 0 < 0xFFFFFFFF unsigned → 1
       dut.io.operandA.poke(0.U)
-      dut.io.operandB.poke(0xFFFFFFFFL.U)
+      dut.io.operandB.poke(0xffffffffL.U)
       dut.io.operation.poke(ALUOp.SLTU)
       dut.io.aluResult.expect(1.U)
       dut.clock.step(1)
 
-      // 0xFFFFFFFF < 0 unsigned → 0
-      dut.io.operandA.poke(0xFFFFFFFFL.U)
+      // 0xFFFFFFFF > 0 unsigned → 0
+      dut.io.operandA.poke(0xffffffffL.U)
       dut.io.operandB.poke(0.U)
       dut.io.operation.poke(ALUOp.SLTU)
       dut.io.aluResult.expect(0.U)
@@ -393,22 +393,22 @@ class ALUPassBTest extends AnyFlatSpec with ChiselScalatestTester {
       dut.clock.setTimeout(0)
 
       // operandA is irrelevant; output must equal operandB
-      dut.io.operandA.poke(0xDEADBEEFL.U)
+      dut.io.operandA.poke(0xdeadbeefL.U)
       dut.io.operandB.poke(0x12345678.U)
       dut.io.operation.poke(ALUOp.PASSB)
       dut.io.aluResult.expect(0x12345678.U)
       dut.clock.step(1)
 
-      dut.io.operandA.poke(0xFFFFFFFFL.U)
+      dut.io.operandA.poke(0xffffffffL.U)
       dut.io.operandB.poke(0.U)
       dut.io.operation.poke(ALUOp.PASSB)
       dut.io.aluResult.expect(0.U)
       dut.clock.step(1)
 
       dut.io.operandA.poke(0.U)
-      dut.io.operandB.poke(0xFFFFFFFFL.U)
+      dut.io.operandB.poke(0xffffffffL.U)
       dut.io.operation.poke(ALUOp.PASSB)
-      dut.io.aluResult.expect(0xFFFFFFFFL.U)
+      dut.io.aluResult.expect(0xffffffffL.U)
       dut.clock.step(1)
     }
   }

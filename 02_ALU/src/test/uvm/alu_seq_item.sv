@@ -44,9 +44,6 @@ class alu_seq_item extends uvm_sequence_item;
                           SLL, SRL, SRA, SLT, SLTU, PASSB};
     }
 
-    // --------------------------------------------------------
-    // convert2str – used for UVM logging
-    // --------------------------------------------------------
     virtual function string convert2str();
         return $sformatf("operandA: 0x%0x, operandB: 0x%0x, operation: %0p, aluResult: 0x%0x",
                           operandA, operandB, operation, aluResult);

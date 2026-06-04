@@ -19,17 +19,7 @@ import chisel3.experimental.ChiselEnum
 // so that the generated Verilog port io_operation is directly
 // compatible with the UVM testbench.
 object ALUOp extends ChiselEnum {
-  val ADD   = Value(0.U)   // addition
-  val SUB   = Value(1.U)   // subtraction
-  val AND   = Value(2.U)   // bitwise AND
-  val OR    = Value(3.U)   // bitwise OR
-  val XOR   = Value(4.U)   // bitwise XOR
-  val SLL   = Value(5.U)   // shift left logical
-  val SRL   = Value(6.U)   // shift right logical
-  val SRA   = Value(7.U)   // shift right arithmetic
-  val SLT   = Value(8.U)   // set less than (signed)
-  val SLTU  = Value(9.U)   // set less than unsigned
-  val PASSB = Value(10.U)  // pass operandB unchanged
+  val ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU, PASSB = Value
 }
 
 // ============================================================
@@ -38,19 +28,17 @@ object ALUOp extends ChiselEnum {
 class ALU extends Module {
 
   val io = IO(new Bundle {
-    val operandA  = Input(UInt(32.W))       // first operand
-    val operandB  = Input(UInt(32.W))       // second operand
-    val operation = Input(ALUOp())          // operation selector
-    val aluResult = Output(UInt(32.W))      // computed result
+    val operandA = Input(UInt(32.W)) // first operand
+    val operandB = Input(UInt(32.W)) // second operand
+    val operation = Input(ALUOp()) // operation selector
+    val aluResult = Output(UInt(32.W)) // computed result
   })
 
-  // Default assignment – avoids "unconnected wire" errors if
-  // none of the when/elsewhen branches match (should never
-  // happen with a well-formed input, but Chisel requires it).
+  // Default assignment – avoids "unconnected wire" errors
   io.aluResult := 0.U
 
   // Cast operands to signed where arithmetic sign matters.
-  // Chisel's SInt lets us use the >>> arithmetic-shift operator.
+  // Chisel's SInt uses arithmetic-shift operator.
   val a_signed = io.operandA.asSInt
   val b_signed = io.operandB.asSInt
 
@@ -109,7 +97,6 @@ class ALU extends Module {
     }
 
     is(ALUOp.PASSB) {
-      // Simply forward operandB to the output unchanged.
       io.aluResult := io.operandB
     }
   }

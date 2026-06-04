@@ -13,7 +13,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 import Assignment02._
 
-
 object Verilog_Gen extends App {
   emitVerilog(new ALU, Array("--target-dir", "generated-src"))
 }
