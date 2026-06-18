@@ -6,7 +6,7 @@
 
 /*
 This file contains the top-level module for the Pipelined RISC-V 32I core and acts as the interface between the core and external testbenches.
-*/
+ */
 
 package PipelinedRV32I
 
@@ -15,16 +15,16 @@ import chisel3.util._
 
 import core_tile._
 
-class PipelinedRV32I (BinaryFile: String) extends Module {
+class PipelinedRV32I(BinaryFile: String) extends Module {
 
-val io = IO(new Bundle {
-  val result    = Output(UInt(32.W)) 
-  val exception = Output(Bool())
- })
-  
+  val io = IO(new Bundle {
+    val result = Output(UInt(32.W))
+    val exception = Output(Bool())
+  })
+
   val core = Module(new PipelinedRV32Icore(BinaryFile))
 
-  io.result    := core.io.check_res
+  io.result := core.io.check_res
   io.exception := core.io.exception
 
 }

@@ -9,14 +9,14 @@ Global Definitions and Data Types
 
 Enumerations:
     uopc: ChiselEnum defining micro-operation codes for all supported RV32I instructions:
-        R-type instructions 
+        R-type instructions
         I-type instructions
         NOP (no operation, default case)
 
 This enum is used throughout the pipeline:
     Decode stage assigns uop based on instruction fields
     Execute stage maps uop to ALU operations
-*/
+ */
 
 package core_tile
 
@@ -29,27 +29,27 @@ import chisel3.experimental.ChiselEnum
 
 object uopc extends ChiselEnum {
   // R-type instructions
-  val isADD  = Value
-  val isSUB  = Value
-  val isSLL  = Value
-  val isSLT  = Value
+  val isADD = Value
+  val isSUB = Value
+  val isSLL = Value
+  val isSLT = Value
   val isSLTU = Value
-  val isXOR  = Value
-  val isSRL  = Value
-  val isSRA  = Value
-  val isOR   = Value
-  val isAND  = Value
+  val isXOR = Value
+  val isSRL = Value
+  val isSRA = Value
+  val isOR = Value
+  val isAND = Value
 
   // I-type instructions
-  val isADDI  = Value
-  val isSLLI  = Value
-  val isSLTI  = Value
+  val isADDI = Value
+  val isSLLI = Value
+  val isSLTI = Value
   val isSLTIU = Value
-  val isXORI  = Value
-  val isSRLI  = Value
-  val isSRAI  = Value
-  val isORI   = Value
-  val isANDI  = Value
+  val isXORI = Value
+  val isSRLI = Value
+  val isSRAI = Value
+  val isORI = Value
+  val isANDI = Value
 
   // NOP (no operation, default case)
   val isNOP = Value

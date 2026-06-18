@@ -31,9 +31,9 @@ Outputs:
     uop: micro-operation code (identifies instruction type)
     rd: destination register index
     operandA: first operand
-    operandB: second operand 
+    operandB: second operand
     XcptInvalid: exception flag for invalid instructions
-*/
+ */
 
 package core_tile
 
@@ -51,27 +51,27 @@ class ID extends Module {
     val instr = Input(UInt(32.W))
 
     // Register file read port A (rs1)
-    val regFileReq_A  = Flipped(new regFileReadReq)
+    val regFileReq_A = Flipped(new regFileReadReq)
     val regFileResp_A = Flipped(new regFileReadResp)
 
     // Register file read port B (rs2)
-    val regFileReq_B  = Flipped(new regFileReadReq)
+    val regFileReq_B = Flipped(new regFileReadReq)
     val regFileResp_B = Flipped(new regFileReadResp)
 
     // Outputs to ID barrier
-    val uop        = Output(uopc())
-    val rd         = Output(UInt(5.W))
-    val operandA   = Output(UInt(32.W))
-    val operandB   = Output(UInt(32.W))
+    val uop = Output(uopc())
+    val rd = Output(UInt(5.W))
+    val operandA = Output(UInt(32.W))
+    val operandB = Output(UInt(32.W))
     val XcptInvalid = Output(Bool())
   })
 
   // Extract instruction fields
   val opcode = io.instr(6, 0)
-  val rd     = io.instr(11, 7)
+  val rd = io.instr(11, 7)
   val funct3 = io.instr(14, 12)
-  val rs1    = io.instr(19, 15)
-  val rs2    = io.instr(24, 20)
+  val rs1 = io.instr(19, 15)
+  val rs2 = io.instr(24, 20)
   val funct7 = io.instr(31, 25)
 
   // Sign-extended 12-bit immediate (I-type)
@@ -82,10 +82,10 @@ class ID extends Module {
   io.regFileReq_B.addr := rs2
 
   // Default outputs
-  io.uop         := uopc.isNOP
-  io.rd          := rd
-  io.operandA    := io.regFileResp_A.data
-  io.operandB    := io.regFileResp_B.data
+  io.uop := uopc.isNOP
+  io.rd := rd
+  io.operandA := io.regFileResp_A.data
+  io.operandB := io.regFileResp_B.data
   io.XcptInvalid := false.B
 
   // R-type opcode: 0110011

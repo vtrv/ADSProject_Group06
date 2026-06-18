@@ -28,7 +28,7 @@ Inputs:
 
 Outputs:
     instr: send the fetched instruction to IF Barrier
-*/
+ */
 
 package core_tile
 
@@ -39,7 +39,7 @@ import chisel3.util.experimental.loadMemoryFromFile
 // Fetch Stage
 // -----------------------------------------
 
-class IF (BinaryFile: String) extends Module {
+class IF(BinaryFile: String) extends Module {
   val io = IO(new Bundle {
     val instr = Output(UInt(32.W))
   })

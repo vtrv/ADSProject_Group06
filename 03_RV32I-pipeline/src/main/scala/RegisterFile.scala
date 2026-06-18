@@ -29,33 +29,33 @@ Ports:
 Functionality:
     Two read ports allow simultaneous reading of two operands
     Synchronous write updates register if wr_en is asserted
-*/
+ */
 
 // -----------------------------------------
 // Register File
 // -----------------------------------------
 
 class regFileReadReq extends Bundle {
-    val addr = Input(UInt(5.W))
+  val addr = Input(UInt(5.W))
 }
 
 class regFileReadResp extends Bundle {
-    val data = Output(UInt(32.W))
+  val data = Output(UInt(32.W))
 }
 
 class regFileWriteReq extends Bundle {
-    val addr = Input(UInt(5.W))
-    val data = Input(UInt(32.W))
-    val wr_en = Input(Bool())
+  val addr = Input(UInt(5.W))
+  val data = Input(UInt(32.W))
+  val wr_en = Input(Bool())
 }
 
 class regFile extends Module {
   val io = IO(new Bundle {
-    val req_1  = new regFileReadReq
+    val req_1 = new regFileReadReq
     val resp_1 = new regFileReadResp
-    val req_2  = new regFileReadReq
+    val req_2 = new regFileReadReq
     val resp_2 = new regFileReadResp
-    val req_3  = new regFileWriteReq
+    val req_3 = new regFileWriteReq
   })
 
   // 32 registers, each 32 bits, initialized to 0

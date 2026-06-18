@@ -4,7 +4,6 @@
 // Chair of Electronic Design Automation, RPTU in Kaiserslautern
 // File created on 01/09/2026 by Tobias Jauch (@tojauch)
 
-
 /*
 Writeback (WB) Stage: result storage and register file updates
 
@@ -30,7 +29,7 @@ Functionality:
 
 Outputs:
     check_res: result value for verification
-*/
+ */
 
 package core_tile
 
@@ -44,7 +43,7 @@ class WB extends Module {
   val io = IO(new Bundle {
     // Inputs from MEM barrier
     val aluResult = Input(UInt(32.W))
-    val rd        = Input(UInt(5.W))
+    val rd = Input(UInt(5.W))
 
     // Register file write port
     val regFileReq = Flipped(new regFileWriteReq)
@@ -54,8 +53,8 @@ class WB extends Module {
   })
 
   // Forward ALU result to register file write port
-  io.regFileReq.addr  := io.rd
-  io.regFileReq.data  := io.aluResult
+  io.regFileReq.addr := io.rd
+  io.regFileReq.data := io.aluResult
   io.regFileReq.wr_en := true.B
 
   // Output result for verification
