@@ -106,16 +106,32 @@ class ID extends Module {
         }
       }
       is("b001".U) {
-        io.uop := uopc.isSLL
+        when(funct7 === "b0000000".U) {
+          io.uop := uopc.isSLL
+        }.otherwise {
+          io.XcptInvalid := true.B
+        }
       }
       is("b010".U) {
-        io.uop := uopc.isSLT
+        when(funct7 === "b0000000".U) {
+          io.uop := uopc.isSLT
+        }.otherwise {
+          io.XcptInvalid := true.B
+        }
       }
       is("b011".U) {
-        io.uop := uopc.isSLTU
+        when(funct7 === "b0000000".U) {
+          io.uop := uopc.isSLTU
+        }.otherwise {
+          io.XcptInvalid := true.B
+        }
       }
       is("b100".U) {
-        io.uop := uopc.isXOR
+        when(funct7 === "b0000000".U) {
+          io.uop := uopc.isXOR
+        }.otherwise {
+          io.XcptInvalid := true.B
+        }
       }
       is("b101".U) {
         when(funct7 === "b0000000".U) {
@@ -127,10 +143,18 @@ class ID extends Module {
         }
       }
       is("b110".U) {
-        io.uop := uopc.isOR
+        when(funct7 === "b0000000".U) {
+          io.uop := uopc.isOR
+        }.otherwise {
+          io.XcptInvalid := true.B
+        }
       }
       is("b111".U) {
-        io.uop := uopc.isAND
+        when(funct7 === "b0000000".U) {
+          io.uop := uopc.isAND
+        }.otherwise {
+          io.XcptInvalid := true.B
+        }
       }
     }
   }.elsewhen(isIType) {
@@ -140,7 +164,11 @@ class ID extends Module {
         io.uop := uopc.isADDI
       }
       is("b001".U) {
-        io.uop := uopc.isSLLI
+        when(funct7 === "b0000000".U) {
+          io.uop := uopc.isSLLI
+        }.otherwise {
+          io.XcptInvalid := true.B
+        }
       }
       is("b010".U) {
         io.uop := uopc.isSLTI
@@ -169,7 +197,6 @@ class ID extends Module {
     }
   }.otherwise {
     // Not a valid R-type or I-type instruction
-    // NOP (addi x0, x0, 0) has opcode 0010011 so it's handled above
     // Everything else is invalid (except NOP which is encoded as ADDI)
     when(opcode =/= 0.U) {
       io.XcptInvalid := true.B
