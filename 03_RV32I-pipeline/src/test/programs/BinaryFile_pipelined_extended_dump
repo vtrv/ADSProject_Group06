@@ -1,10 +1,4 @@
-// ======================================================================
-// Extended Test Program for Pipelined RV32I Core
-// ======================================================================
-// This program tests I-type instructions, pipeline data hazards,
-// corner cases, and exception handling.
 // NOP = ADDI x0, x0, 0 (used as pipeline padding)
-// ======================================================================
 
 // --- Section 1: I-type Immediate Instructions (negative/boundary values) ---
 fff00093 // ADDI  x1,  x0, -1        | x1  = 0xFFFFFFFF (-1)
