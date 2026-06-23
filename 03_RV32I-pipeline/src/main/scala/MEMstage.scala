@@ -14,7 +14,7 @@ Current Implementation:
 Rationale:
     Placeholder stage ensures proper pipeline depth and timing
     Allows future extension without architectural changes
-*/
+ */
 
 package core_tile
 
@@ -25,9 +25,7 @@ import chisel3._
 // -----------------------------------------
 
 class MEM extends Module {
-  val io = IO(new Bundle {
-
-  })
+  val io = IO(new Bundle {})
 
   // No memory operations implemented in Assignment03, nothing to do here! :)
 

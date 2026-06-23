@@ -1,0 +1,59 @@
+// NOP = ADDI x0, x0, 0 (used as pipeline padding)
+
+// --- Section 1: I-type Immediate Instructions (negative/boundary values) ---
+fff00093 // ADDI  x1,  x0, -1        | x1  = 0xFFFFFFFF (-1)
+80000113 // ADDI  x2,  x0, -2048     | x2  = 0xFFFFF800 (-2048, min I-imm)
+7ff00193 // ADDI  x3,  x0, 2047      | x3  = 0x000007FF (2047, max I-imm)
+00000013 // NOP
+00000013 // NOP
+00000013 // NOP
+0ff0c213 // XORI  x4,  x1, 0x0FF     | x4  = 0xFFFFFF00  (0xFFFFFFFF ^ 0xFF)
+12306293 // ORI   x5,  x0, 0x123     | x5  = 0x00000123  (0 | 0x123)
+0ff0f313 // ANDI  x6,  x1, 0x0FF     | x6  = 0x000000FF  (0xFFFFFFFF & 0xFF)
+0000a393 // SLTI  x7,  x1, 0         | x7  = 1  (-1 < 0 signed → true)
+0010b413 // SLTIU x8,  x1, 1         | x8  = 0  (0xFFFFFFFF > 1 unsigned → false)
+
+// --- Section 2: Shift Immediate Edge Cases (shift by 0 and 31) ---
+fff00493 // ADDI  x9,  x0, -1        | x9  = 0xFFFFFFFF
+00000013 // NOP
+00000013 // NOP
+00000013 // NOP
+00049513 // SLLI  x10, x9, 0         | x10 = 0xFFFFFFFF  (no shift)
+01f49593 // SLLI  x11, x9, 31        | x11 = 0x80000000  (shift left 31)
+0004d613 // SRLI  x12, x9, 0         | x12 = 0xFFFFFFFF  (no shift)
+01f4d693 // SRLI  x13, x9, 31        | x13 = 0x00000001  (shift right logical 31)
+4004d713 // SRAI  x14, x9, 0         | x14 = 0xFFFFFFFF  (no shift, sign preserved)
+41f4d793 // SRAI  x15, x9, 31        | x15 = 0xFFFFFFFF  (arith shift, all sign bits)
+
+// --- Section 3: RAW Data Hazard — Distance 1 (back-to-back) ---
+// In multi-cycle: x17 = 42. In pipeline: x17 = 0 (stale x16, not yet written back)
+02a00813 // ADDI  x16, x0, 42        | x16 = 42  (producer)
+000808b3 // ADD   x17, x16, x0       | x17 = 0   (HAZARD: reads stale x16 = 0)
+00000013 // NOP
+00000013 // NOP
+00000013 // NOP
+
+// --- Section 4: WAW — Two Writes to Same Register ---
+// Both instructions write x22; with distance 4 from 2nd write, consumer reads 222
+06f00b13 // ADDI  x22, x0, 111       | x22 = 111 (first write)
+0de00b13 // ADDI  x22, x0, 222       | x22 = 222 (second write overwrites)
+00000013 // NOP
+00000013 // NOP
+00000013 // NOP
+000b0bb3 // ADD   x23, x22, x0       | x23 = 222 (reads x22 after both writes done)
+
+// --- Section 5: x0 Hardwiring ---
+// Writing to x0 must be discarded; x0 always reads as 0
+3e700013 // ADDI  x0,  x0, 999       | ALU result = 999, but x0 stays 0
+00000013 // NOP
+00000013 // NOP
+00000013 // NOP
+00000c33 // ADD   x24, x0, x0        | x24 = 0   (x0 is still 0)
+
+// --- Section 6: Self-Referencing Operation ---
+// Same register as both sources and destination
+00a00c93 // ADDI  x25, x0, 10        | x25 = 10
+00000013 // NOP
+00000013 // NOP
+00000013 // NOP
+019c8cb3 // ADD   x25, x25, x25      | x25 = 20  (10 + 10, no hazard at distance 4)
