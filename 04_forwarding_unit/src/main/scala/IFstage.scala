@@ -28,7 +28,7 @@ Inputs:
 
 Outputs:
     instr: send the fetched instruction to IF Barrier
-*/
+ */
 
 package core_tile
 

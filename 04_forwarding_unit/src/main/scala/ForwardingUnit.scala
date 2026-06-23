@@ -38,9 +38,47 @@ import uopc._
 
 class ForwardingUnit extends Module {
   val io = IO(new Bundle {
-    // Add I/O ports according to the specification above here
+    // Inputs
+    val rs1_EX   = Input(UInt(5.W))   // source register 1 in EX stage
+    val rs2_EX   = Input(UInt(5.W))   // source register 2 in EX stage
+    val rd_MEM   = Input(UInt(5.W))   // destination register in MEM stage (from EX barrier)
+    val rd_WB    = Input(UInt(5.W))   // destination register in WB stage (from MEM barrier)
+    val wrEn_MEM = Input(Bool())      // write enable for MEM stage
+    val wrEn_WB  = Input(Bool())      // write enable for WB stage
+
+    // Outputs: 2-bit mux select signals
+    // 00 = no forwarding (use ID barrier value)
+    // 10 = forward from MEM (EX barrier output)
+    // 01 = forward from WB (MEM barrier output)
+    val forwardA = Output(UInt(2.W))
+    val forwardB = Output(UInt(2.W))
   })
 
-  //ToDo: Add your implementation according to the specification above here 
+  // Default: no forwarding
+  io.forwardA := "b00".U
+  io.forwardB := "b00".U
 
+  // --- Forward A (operand A / rs1) ---
+
+  // WB hazard (distance-2): check first so MEM can override (MEM has priority)
+  when(io.wrEn_WB && io.rd_WB =/= 0.U && io.rd_WB === io.rs1_EX) {
+    io.forwardA := "b01".U
+  }
+
+  // MEM hazard (distance-1): higher priority, overrides WB
+  when(io.wrEn_MEM && io.rd_MEM =/= 0.U && io.rd_MEM === io.rs1_EX) {
+    io.forwardA := "b10".U
+  }
+
+  // --- Forward B (operand B / rs2) ---
+
+  // WB hazard (distance-2): check first so MEM can override
+  when(io.wrEn_WB && io.rd_WB =/= 0.U && io.rd_WB === io.rs2_EX) {
+    io.forwardB := "b01".U
+  }
+
+  // MEM hazard (distance-1): higher priority, overrides WB
+  when(io.wrEn_MEM && io.rd_MEM =/= 0.U && io.rd_MEM === io.rs2_EX) {
+    io.forwardB := "b10".U
+  }
 }

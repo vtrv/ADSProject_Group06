@@ -22,7 +22,7 @@ Outputs:
 Functionality:
     Save all input signals to a register and output them in the following clock cycle
     Enable result observation without pipeline disruption (for result and exception signals)
-*/
+ */
 
 package core_tile
 

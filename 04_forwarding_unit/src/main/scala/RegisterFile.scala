@@ -65,11 +65,17 @@ class regFile extends Module {
   // 32 registers, each 32 bits, initialized to 0
   val regFile = RegInit(VecInit(Seq.fill(32)(0.U(32.W))))
 
-  // Read port 1: x0 is always 0
-  io.resp_1.data := Mux(io.req_1.addr === 0.U, 0.U, regFile(io.req_1.addr))
+  // Read port 1: x0 is always 0, with same-cycle write-before-read bypass
+  io.resp_1.data := Mux(io.req_1.addr === 0.U, 0.U,
+    Mux(io.req_3.wr_en && io.req_3.addr =/= 0.U && io.req_1.addr === io.req_3.addr,
+      io.req_3.data,
+      regFile(io.req_1.addr)))
 
-  // Read port 2: x0 is always 0
-  io.resp_2.data := Mux(io.req_2.addr === 0.U, 0.U, regFile(io.req_2.addr))
+  // Read port 2: x0 is always 0, with same-cycle write-before-read bypass
+  io.resp_2.data := Mux(io.req_2.addr === 0.U, 0.U,
+    Mux(io.req_3.wr_en && io.req_3.addr =/= 0.U && io.req_2.addr === io.req_3.addr,
+      io.req_3.data,
+      regFile(io.req_2.addr)))
 
   // Write port: synchronous write, x0 cannot be written
   when(io.req_3.wr_en && io.req_3.addr =/= 0.U) {

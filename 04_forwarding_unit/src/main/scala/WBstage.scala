@@ -4,7 +4,6 @@
 // Chair of Electronic Design Automation, RPTU in Kaiserslautern
 // File created on 01/09/2026 by Tobias Jauch (@tojauch)
 
-
 /*
 Writeback (WB) Stage: result storage and register file updates
 
@@ -30,7 +29,7 @@ Functionality:
 
 Outputs:
     check_res: result value for verification
-*/
+ */
 
 package core_tile
 

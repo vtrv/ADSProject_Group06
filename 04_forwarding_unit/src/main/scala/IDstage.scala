@@ -61,6 +61,8 @@ class ID extends Module {
     // Outputs to ID barrier
     val uop = Output(uopc())
     val rd = Output(UInt(5.W))
+    val rs1Out = Output(UInt(5.W))
+    val rs2Out = Output(UInt(5.W))
     val operandA = Output(UInt(32.W))
     val operandB = Output(UInt(32.W))
     val XcptInvalid = Output(Bool())
@@ -84,6 +86,8 @@ class ID extends Module {
   // Default outputs
   io.uop := uopc.isNOP
   io.rd := rd
+  io.rs1Out := rs1
+  io.rs2Out := rs2
   io.operandA := io.regFileResp_A.data
   io.operandB := io.regFileResp_B.data
   io.XcptInvalid := false.B

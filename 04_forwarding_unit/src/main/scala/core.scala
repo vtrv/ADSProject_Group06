@@ -55,7 +55,6 @@ import chisel3.util.experimental.loadMemoryFromFile
 import Assignment02.{ALU, ALUOp}
 import uopc._
 
-
 class PipelinedRV32Icore(BinaryFile: String) extends Module {
   val io = IO(new Bundle {
     val check_res = Output(UInt(32.W))
@@ -77,6 +76,9 @@ class PipelinedRV32Icore(BinaryFile: String) extends Module {
   // --- Instantiate Register File ---
   val registerFile = Module(new regFile)
 
+  // --- Instantiate Forwarding Unit ---
+  val forwardingUnit = Module(new ForwardingUnit)
+
   // --- IF -> IF Barrier ---
   ifBarrier.io.inInstr := ifStage.io.instr
 
@@ -93,25 +95,49 @@ class PipelinedRV32Icore(BinaryFile: String) extends Module {
   // --- ID -> ID Barrier ---
   idBarrier.io.inUOP := idStage.io.uop
   idBarrier.io.inRD := idStage.io.rd
+  idBarrier.io.inRS1 := idStage.io.rs1Out
+  idBarrier.io.inRS2 := idStage.io.rs2Out
   idBarrier.io.inOperandA := idStage.io.operandA
   idBarrier.io.inOperandB := idStage.io.operandB
   idBarrier.io.inXcptInvalid := idStage.io.XcptInvalid
 
-  // --- ID Barrier -> EX ---
+  // --- ID Barrier -> EX (with forwarding muxes) ---
   exStage.io.uop := idBarrier.io.outUOP
-  exStage.io.operandA := idBarrier.io.outOperandA
-  exStage.io.operandB := idBarrier.io.outOperandB
   exStage.io.rd := idBarrier.io.outRD
   exStage.io.XcptInvalid := idBarrier.io.outXcptInvalid
+
+  // --- Forwarding Unit connections ---
+  forwardingUnit.io.rs1_EX := idBarrier.io.outRS1
+  forwardingUnit.io.rs2_EX := idBarrier.io.outRS2
+  forwardingUnit.io.rd_MEM := exBarrier.io.outRD
+  forwardingUnit.io.rd_WB := memBarrier.io.outRD
+  forwardingUnit.io.wrEn_MEM := exBarrier.io.outWrEn
+  forwardingUnit.io.wrEn_WB := memBarrier.io.outWrEn
+
+  // --- Forwarding muxes (in core.scala per assignment specification) ---
+  // forwardA/B: 00 = no forwarding, 10 = forward from MEM (EX barrier), 01 = forward from WB (MEM barrier)
+  exStage.io.operandA := MuxLookup(forwardingUnit.io.forwardA, idBarrier.io.outOperandA, Seq(
+    "b00".U -> idBarrier.io.outOperandA,
+    "b10".U -> exBarrier.io.outAluResult,
+    "b01".U -> memBarrier.io.outAluResult
+  ))
+
+  exStage.io.operandB := MuxLookup(forwardingUnit.io.forwardB, idBarrier.io.outOperandB, Seq(
+    "b00".U -> idBarrier.io.outOperandB,
+    "b10".U -> exBarrier.io.outAluResult,
+    "b01".U -> memBarrier.io.outAluResult
+  ))
 
   // --- EX -> EX Barrier ---
   exBarrier.io.inAluResult := exStage.io.aluResult
   exBarrier.io.inRD := exStage.io.rdOut
+  exBarrier.io.inWrEn := true.B   // All R-type and I-type instructions write back
   exBarrier.io.inXcptInvalid := exStage.io.exception
 
   // --- EX Barrier -> MEM Barrier (MEM stage is empty, pass through) ---
   memBarrier.io.inAluResult := exBarrier.io.outAluResult
   memBarrier.io.inRD := exBarrier.io.outRD
+  memBarrier.io.inWrEn := exBarrier.io.outWrEn
   memBarrier.io.inException := exBarrier.io.outXcptInvalid
 
   // --- MEM Barrier -> WB ---
