@@ -83,19 +83,19 @@ class ID extends Module {
   io.regFileReq_A.addr := rs1
   io.regFileReq_B.addr := rs2
 
-  // Default outputs
-  io.uop := uopc.isNOP
-  io.rd := rd
-  io.rs1Out := rs1
-  io.rs2Out := rs2
-  io.operandA := io.regFileResp_A.data
-  io.operandB := io.regFileResp_B.data
-  io.XcptInvalid := false.B
-
   // R-type opcode: 0110011
   val isRType = opcode === "b0110011".U
   // I-type opcode: 0010011
   val isIType = opcode === "b0010011".U
+
+  // Default outputs
+  io.uop := uopc.isNOP
+  io.rd := rd
+  io.rs1Out := rs1
+  io.rs2Out := Mux(isRType, rs2, 0.U)
+  io.operandA := io.regFileResp_A.data
+  io.operandB := io.regFileResp_B.data
+  io.XcptInvalid := false.B
 
   when(isRType) {
     io.operandB := io.regFileResp_B.data
