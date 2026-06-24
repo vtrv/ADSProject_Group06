@@ -9,14 +9,14 @@ Global Definitions and Data Types
 
 Enumerations:
     uopc: ChiselEnum defining micro-operation codes for all supported RV32I instructions:
-        R-type instructions 
+        R-type instructions
         I-type instructions
         NOP (no operation, default case)
 
 This enum is used throughout the pipeline:
     Decode stage assigns uop based on instruction fields
     Execute stage maps uop to ALU operations
-*/
+ */
 
 package core_tile
 

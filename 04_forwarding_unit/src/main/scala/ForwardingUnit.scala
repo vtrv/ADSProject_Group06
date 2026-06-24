@@ -24,7 +24,7 @@ Outputs:
     forwardA: control signal for selecting source of operand A in EX stage
     forwardB: control signal for selecting source of operand B in EX stage
 
-*/
+ */
 
 package core_tile
 
@@ -39,12 +39,12 @@ import uopc._
 class ForwardingUnit extends Module {
   val io = IO(new Bundle {
     // Inputs
-    val rs1_EX   = Input(UInt(5.W))   // source register 1 in EX stage
-    val rs2_EX   = Input(UInt(5.W))   // source register 2 in EX stage
-    val rd_MEM   = Input(UInt(5.W))   // destination register in MEM stage (from EX barrier)
-    val rd_WB    = Input(UInt(5.W))   // destination register in WB stage (from MEM barrier)
-    val wrEn_MEM = Input(Bool())      // write enable for MEM stage
-    val wrEn_WB  = Input(Bool())      // write enable for WB stage
+    val rs1_EX = Input(UInt(5.W)) // source register 1 in EX stage
+    val rs2_EX = Input(UInt(5.W)) // source register 2 in EX stage
+    val rd_MEM = Input(UInt(5.W)) // destination register in MEM stage (from EX barrier)
+    val rd_WB = Input(UInt(5.W)) // destination register in WB stage (from MEM barrier)
+    val wrEn_MEM = Input(Bool()) // write enable for MEM stage
+    val wrEn_WB = Input(Bool()) // write enable for WB stage
 
     // Outputs: 2-bit mux select signals
     // 00 = no forwarding (use ID barrier value)

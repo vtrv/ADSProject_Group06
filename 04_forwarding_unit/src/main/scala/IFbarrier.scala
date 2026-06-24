@@ -18,7 +18,7 @@ Outputs:
 
 Functionality:
     Save all input signals to a register and output them in the following clock cycle
-*/
+ */
 
 package core_tile
 

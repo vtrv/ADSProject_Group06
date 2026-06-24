@@ -31,9 +31,9 @@ Outputs:
     uop: micro-operation code (identifies instruction type)
     rd: destination register index
     operandA: first operand
-    operandB: second operand 
+    operandB: second operand
     XcptInvalid: exception flag for invalid instructions
-*/
+ */
 
 package core_tile
 

@@ -5,7 +5,7 @@
 // File created on 01/15/2023 by Tobias Jauch (@tojauch)
 
 /*
-The goal of this task is to implement a 5-stage pipeline that features a subset of RV32I (all R-type and I-type instructions). 
+The goal of this task is to implement a 5-stage pipeline that features a subset of RV32I (all R-type and I-type instructions).
 
     Instruction Memory:
         The CPU has an instruction memory (IMem) with 4096 words, each of 32 bits.
@@ -45,7 +45,7 @@ The goal of this task is to implement a 5-stage pipeline that features a subset 
         The final result (writeBackData) is output to the io.check_res signal.
         The exception signal is also passed to the wrapper module. It indicates whether an invalid instruction has been encountered.
         In the fetch stage, a default value of 0 is assigned to io.check_res.
-*/
+ */
 
 package core_tile
 
@@ -116,22 +116,30 @@ class PipelinedRV32Icore(BinaryFile: String) extends Module {
 
   // --- Forwarding muxes (in core.scala per assignment specification) ---
   // forwardA/B: 00 = no forwarding, 10 = forward from MEM (EX barrier), 01 = forward from WB (MEM barrier)
-  exStage.io.operandA := MuxLookup(forwardingUnit.io.forwardA, idBarrier.io.outOperandA, Seq(
-    "b00".U -> idBarrier.io.outOperandA,
-    "b10".U -> exBarrier.io.outAluResult,
-    "b01".U -> memBarrier.io.outAluResult
-  ))
+  exStage.io.operandA := MuxLookup(
+    forwardingUnit.io.forwardA,
+    idBarrier.io.outOperandA,
+    Seq(
+      "b00".U -> idBarrier.io.outOperandA,
+      "b10".U -> exBarrier.io.outAluResult,
+      "b01".U -> memBarrier.io.outAluResult
+    )
+  )
 
-  exStage.io.operandB := MuxLookup(forwardingUnit.io.forwardB, idBarrier.io.outOperandB, Seq(
-    "b00".U -> idBarrier.io.outOperandB,
-    "b10".U -> exBarrier.io.outAluResult,
-    "b01".U -> memBarrier.io.outAluResult
-  ))
+  exStage.io.operandB := MuxLookup(
+    forwardingUnit.io.forwardB,
+    idBarrier.io.outOperandB,
+    Seq(
+      "b00".U -> idBarrier.io.outOperandB,
+      "b10".U -> exBarrier.io.outAluResult,
+      "b01".U -> memBarrier.io.outAluResult
+    )
+  )
 
   // --- EX -> EX Barrier ---
   exBarrier.io.inAluResult := exStage.io.aluResult
   exBarrier.io.inRD := exStage.io.rdOut
-  exBarrier.io.inWrEn := true.B   // All R-type and I-type instructions write back
+  exBarrier.io.inWrEn := true.B // All R-type and I-type instructions write back
   exBarrier.io.inXcptInvalid := exStage.io.exception
 
   // --- EX Barrier -> MEM Barrier (MEM stage is empty, pass through) ---

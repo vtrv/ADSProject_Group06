@@ -31,9 +31,9 @@ Functionality:
     Synchronous write updates register if wr_en is asserted
 
 
-Special Case for hazard resolution:    
+Special Case for hazard resolution:
     If a register is read and written in the same clock cycle, send the new data to data output!
-*/
+ */
 
 // -----------------------------------------
 // Register File
@@ -66,16 +66,26 @@ class regFile extends Module {
   val regFile = RegInit(VecInit(Seq.fill(32)(0.U(32.W))))
 
   // Read port 1: x0 is always 0, with same-cycle write-before-read bypass
-  io.resp_1.data := Mux(io.req_1.addr === 0.U, 0.U,
-    Mux(io.req_3.wr_en && io.req_3.addr =/= 0.U && io.req_1.addr === io.req_3.addr,
+  io.resp_1.data := Mux(
+    io.req_1.addr === 0.U,
+    0.U,
+    Mux(
+      io.req_3.wr_en && io.req_3.addr =/= 0.U && io.req_1.addr === io.req_3.addr,
       io.req_3.data,
-      regFile(io.req_1.addr)))
+      regFile(io.req_1.addr)
+    )
+  )
 
   // Read port 2: x0 is always 0, with same-cycle write-before-read bypass
-  io.resp_2.data := Mux(io.req_2.addr === 0.U, 0.U,
-    Mux(io.req_3.wr_en && io.req_3.addr =/= 0.U && io.req_2.addr === io.req_3.addr,
+  io.resp_2.data := Mux(
+    io.req_2.addr === 0.U,
+    0.U,
+    Mux(
+      io.req_3.wr_en && io.req_3.addr =/= 0.U && io.req_2.addr === io.req_3.addr,
       io.req_3.data,
-      regFile(io.req_2.addr)))
+      regFile(io.req_2.addr)
+    )
+  )
 
   // Write port: synchronous write, x0 cannot be written
   when(io.req_3.wr_en && io.req_3.addr =/= 0.U) {

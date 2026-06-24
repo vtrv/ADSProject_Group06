@@ -27,7 +27,7 @@ Functionality:
 Outputs:
     aluResult: computation result from ALU
     exception: pass exception flag
-*/
+ */
 
 package core_tile
 

@@ -14,7 +14,7 @@ Current Implementation:
 Rationale:
     Placeholder stage ensures proper pipeline depth and timing
     Allows future extension without architectural changes
-*/
+ */
 
 package core_tile
 
