@@ -52,6 +52,18 @@ object uopc extends ChiselEnum {
   val isORI = Value
   val isANDI = Value
 
+  // B-type branch instructions
+  val isBEQ = Value
+  val isBNE = Value
+  val isBLT = Value
+  val isBGE = Value
+  val isBLTU = Value
+  val isBGEU = Value
+
+  // J-type / jump instructions
+  val isJAL = Value
+  val isJALR = Value
+
   // NOP (no operation, default case)
   val isNOP = Value
 }

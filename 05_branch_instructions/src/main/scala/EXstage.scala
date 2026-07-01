@@ -48,11 +48,15 @@ class EX extends Module {
     val uop = Input(uopc())
     val operandA = Input(UInt(32.W))
     val operandB = Input(UInt(32.W))
+    val pc = Input(UInt(32.W))
+    val imm = Input(UInt(32.W))
     val rd = Input(UInt(5.W))
     val XcptInvalid = Input(Bool())
 
     val aluResult = Output(UInt(32.W))
     val rdOut = Output(UInt(5.W))
+    val redirect = Output(Bool())
+    val redirectTarget = Output(UInt(32.W))
     val exception = Output(Bool())
   })
 
@@ -87,11 +91,34 @@ class EX extends Module {
     is(uopc.isORI) { alu.io.operation := ALUOp.OR }
     is(uopc.isAND) { alu.io.operation := ALUOp.AND }
     is(uopc.isANDI) { alu.io.operation := ALUOp.AND }
+    is(uopc.isJAL) { alu.io.operation := ALUOp.ADD }
+    is(uopc.isJALR) { alu.io.operation := ALUOp.ADD }
     is(uopc.isNOP) { alu.io.operation := ALUOp.ADD }
   }
 
+  val isBranch = io.uop === uopc.isBEQ || io.uop === uopc.isBNE || io.uop === uopc.isBLT ||
+    io.uop === uopc.isBGE || io.uop === uopc.isBLTU || io.uop === uopc.isBGEU
+  val isJump = io.uop === uopc.isJAL || io.uop === uopc.isJALR
+  val branchTaken = MuxLookup(
+    io.uop.asUInt,
+    false.B,
+    Seq(
+      uopc.isBEQ.asUInt -> (io.operandA === io.operandB),
+      uopc.isBNE.asUInt -> (io.operandA =/= io.operandB),
+      uopc.isBLT.asUInt -> (io.operandA.asSInt < io.operandB.asSInt),
+      uopc.isBGE.asUInt -> (io.operandA.asSInt >= io.operandB.asSInt),
+      uopc.isBLTU.asUInt -> (io.operandA < io.operandB),
+      uopc.isBGEU.asUInt -> (io.operandA >= io.operandB)
+    )
+  )
+  val linkAddress = (io.pc + 4.U)(31, 0)
+  val pcRelativeTarget = (io.pc + io.imm)(31, 0)
+  val jalrTarget = ((io.operandA + io.imm)(31, 0)) & "hFFFFFFFE".U(32.W) // Clear least significant bit per RISC-V spec
+
   // Outputs
-  io.aluResult := alu.io.aluResult
+  io.aluResult := Mux(isJump, linkAddress, alu.io.aluResult)
   io.rdOut := io.rd
+  io.redirect := (isBranch && branchTaken) || isJump
+  io.redirectTarget := Mux(io.uop === uopc.isJALR, jalrTarget, pcRelativeTarget)
   io.exception := io.XcptInvalid
 }

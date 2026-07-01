@@ -292,4 +292,153 @@ class PipelinedRISCV32ITest extends AnyFlatSpec with ChiselScalatestTester {
       }
   }
 
+  // ==========================================================================
+  // Branch/Jump Test: control hazards, forwarding into branch/jump decisions
+  // ==========================================================================
+  "RV32I_BranchJumpTester" should "work" in {
+    test(new PipelinedRV32I("src/test/programs/BinaryFile_branches"))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+        dut.clock.setTimeout(0)
+
+        // --- Fill pipeline (5 cycles) ---
+        dut.clock.step(5)
+
+        // ================================================================
+        // Section 1: Taken BEQ flushes two wrong-path instructions
+        // ================================================================
+
+        dut.io.result.expect(5.U) // ADDI x1, x0, 5
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(5.U) // ADDI x2, x0, 5
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(10.U) // BEQ x1, x2, +12 taken; x1/x2 forwarded into EX
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(7.U) // ADDI x3, x0, 7
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        // ================================================================
+        // Section 2: Not-taken and taken conditional branches
+        // ================================================================
+
+        dut.io.result.expect(10.U) // BNE x1, x2, +8 not taken
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(9.U) // ADDI x4, x0, 9
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(5.U) // BLT x0, x1, +8 taken
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        // ================================================================
+        // Section 3: JAL and JALR redirects
+        // ================================================================
+
+        dut.io.result.expect(44.U) // JAL x5, +8 writes PC+4
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(64.U) // ADDI x6, x0, 64
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(56.U) // JALR x7, 4(x6) writes PC+4, x6 forwarded
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        // ================================================================
+        // Section 4: Unsigned and signed branch comparisons
+        // ================================================================
+
+        dut.io.result.expect(77.U) // ADDI x9, x0, 77
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(BigInt("FFFFFFFF", 16).U) // ADDI x10, x0, -1
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(4.U) // BLTU x10, x1, +8 not taken; unsigned 0xffffffff > 5
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(11.U) // ADDI x11, x0, 11
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(4.U) // BGEU x10, x1, +8 taken
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(13.U) // ADDI x13, x0, 13
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(10.U) // BGE x1, x2, +8 taken
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(0.U) // flushed wrong-path instruction
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+
+        dut.io.result.expect(15.U) // ADDI x15, x0, 15
+        dut.io.exception.expect(false.B)
+        dut.clock.step(1)
+      }
+  }
+
 }

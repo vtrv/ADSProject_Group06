@@ -23,20 +23,28 @@ Functionality:
 package core_tile
 
 import chisel3._
-
-// -----------------------------------------
-// IF-Barrier
-// -----------------------------------------
+import uopc._
 
 class IFBarrier extends Module {
   val io = IO(new Bundle {
-    val inInstr = Input(UInt(32.W))
+    val flush    = Input(Bool())
+    val inPC     = Input(UInt(32.W))
+    val inInstr  = Input(UInt(32.W))
+    val outPC    = Output(UInt(32.W))
     val outInstr = Output(UInt(32.W))
   })
 
+  val pcReg    = RegInit(0.U(32.W))
   val instrReg = RegInit(0.U(32.W))
 
-  instrReg := io.inInstr
+  when (io.flush) {
+    instrReg := 0.U 
+    pcReg    := 0.U
+  } .otherwise {
+    pcReg    := io.inPC
+    instrReg := io.inInstr
+  }
+
+  io.outPC    := pcReg
   io.outInstr := instrReg
 }
-

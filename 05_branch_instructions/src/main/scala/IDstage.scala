@@ -49,6 +49,7 @@ import uopc._
 class ID extends Module {
   val io = IO(new Bundle {
     // Input from IF barrier
+    val pc = Input(UInt(32.W))
     val instr = Input(UInt(32.W))
 
     // Register file read port A (rs1)
@@ -66,6 +67,9 @@ class ID extends Module {
     val rs2Out = Output(UInt(5.W))
     val operandA = Output(UInt(32.W))
     val operandB = Output(UInt(32.W))
+    val pcOut = Output(UInt(32.W))
+    val immOut = Output(UInt(32.W))
+    val wrEn = Output(Bool())
     val XcptInvalid = Output(Bool())
   })
 
@@ -77,8 +81,10 @@ class ID extends Module {
   val rs2 = io.instr(24, 20)
   val funct7 = io.instr(31, 25)
 
-  // Sign-extended 12-bit immediate (I-type)
-  val imm = Cat(Fill(20, io.instr(31)), io.instr(31, 20))
+  // Sign-extended immediates
+  val immI = Cat(Fill(20, io.instr(31)), io.instr(31, 20))
+  val immB = Cat(Fill(19, io.instr(31)), io.instr(31), io.instr(7), io.instr(30, 25), io.instr(11, 8), 0.U(1.W))
+  val immJ = Cat(Fill(11, io.instr(31)), io.instr(31), io.instr(19, 12), io.instr(20), io.instr(30, 21), 0.U(1.W))
 
   // Send read requests to register file
   io.regFileReq_A.addr := rs1
@@ -88,14 +94,19 @@ class ID extends Module {
   val isRType = opcode === "b0110011".U
   // I-type opcode: 0010011
   val isIType = opcode === "b0010011".U
+  val isBType = opcode === "b1100011".U
+  val isJAL = opcode === "b1101111".U
+  val isJALR = opcode === "b1100111".U
 
   // Default outputs
   io.uop := uopc.isNOP
   io.rd := rd
   io.rs1Out := rs1
-  io.rs2Out := Mux(isRType, rs2, 0.U)
+  io.rs2Out := Mux(isRType || isBType, rs2, 0.U)
   io.operandA := io.regFileResp_A.data
   io.operandB := io.regFileResp_B.data
+  io.pcOut := io.pc
+  io.immOut := 0.U
   io.XcptInvalid := false.B
 
   when(isRType) {
@@ -163,7 +174,8 @@ class ID extends Module {
       }
     }
   }.elsewhen(isIType) {
-    io.operandB := imm
+    io.operandB := immI
+    io.immOut := immI
     switch(funct3) {
       is("b000".U) {
         io.uop := uopc.isADDI
@@ -200,6 +212,36 @@ class ID extends Module {
         io.uop := uopc.isANDI
       }
     }
+  }.elsewhen(isBType) {
+    io.operandB := io.regFileResp_B.data
+    io.immOut := immB
+    switch(funct3) {
+      is("b000".U) { io.uop := uopc.isBEQ }
+      is("b001".U) { io.uop := uopc.isBNE }
+      is("b100".U) { io.uop := uopc.isBLT }
+      is("b101".U) { io.uop := uopc.isBGE }
+      is("b110".U) { io.uop := uopc.isBLTU }
+      is("b111".U) { io.uop := uopc.isBGEU }
+    }
+    when(!(funct3 === "b000".U || funct3 === "b001".U || funct3 === "b100".U ||
+      funct3 === "b101".U || funct3 === "b110".U || funct3 === "b111".U)) {
+      io.XcptInvalid := true.B
+    }
+  }.elsewhen(isJAL) {
+    io.uop := uopc.isJAL
+    io.rs1Out := 0.U
+    io.rs2Out := 0.U
+    io.operandA := 0.U
+    io.operandB := 0.U
+    io.immOut := immJ
+  }.elsewhen(isJALR) {
+    io.operandB := immI
+    io.immOut := immI
+    when(funct3 === "b000".U) {
+      io.uop := uopc.isJALR
+    }.otherwise {
+      io.XcptInvalid := true.B
+    }
   }.otherwise {
     // Not a valid R-type or I-type instruction
     // Everything else is invalid (except NOP which is encoded as ADDI)
@@ -207,4 +249,11 @@ class ID extends Module {
       io.XcptInvalid := true.B
     }
   }
+
+  // Register file write enable: assert for every instruction that produces a
+  // result to write back to rd, i.e. everything except branches and NOPs.
+  val isBranchUop = io.uop === uopc.isBEQ || io.uop === uopc.isBNE || io.uop === uopc.isBLT ||
+    io.uop === uopc.isBGE || io.uop === uopc.isBLTU || io.uop === uopc.isBGEU
+  val isJumpUop = io.uop === uopc.isJAL || io.uop === uopc.isJALR
+  io.wrEn := isJumpUop || !(isBranchUop || io.uop === uopc.isNOP)
 }

@@ -46,6 +46,7 @@ class WB extends Module {
     // Inputs from MEM barrier
     val aluResult = Input(UInt(32.W))
     val rd = Input(UInt(5.W))
+    val wrEn = Input(Bool())
 
     // Register file write port
     val regFileReq = Flipped(new regFileWriteReq)
@@ -57,7 +58,7 @@ class WB extends Module {
   // Forward ALU result to register file write port
   io.regFileReq.addr := io.rd
   io.regFileReq.data := io.aluResult
-  io.regFileReq.wr_en := true.B
+  io.regFileReq.wr_en := io.wrEn
 
   // Output result for verification
   io.check_res := io.aluResult

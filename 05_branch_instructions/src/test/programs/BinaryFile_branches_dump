@@ -1,0 +1,27 @@
+00500093 // ADDI x1, x0, 5
+00500113 // ADDI x2, x0, 5
+00208663 // BEQ x1, x2, +12
+06f00193 // ADDI x3, x0, 111 (flushed)
+0de00193 // ADDI x3, x0, 222 (flushed)
+00700193 // ADDI x3, x0, 7
+00209463 // BNE x1, x2, +8
+00900213 // ADDI x4, x0, 9
+00104463 // BLT x0, x1, +8
+06300213 // ADDI x4, x0, 99 (flushed)
+008002ef // JAL x5, +8
+06400213 // ADDI x4, x0, 100 (flushed)
+04000313 // ADDI x6, x0, 64
+004303e7 // JALR x7, 4(x6)
+00100413 // ADDI x8, x0, 1 (flushed)
+00200413 // ADDI x8, x0, 2 (flushed)
+00300413 // ADDI x8, x0, 3 (skipped)
+04d00493 // ADDI x9, x0, 77
+fff00513 // ADDI x10, x0, -1
+00156463 // BLTU x10, x1, +8
+00b00593 // ADDI x11, x0, 11
+00157463 // BGEU x10, x1, +8
+00c00613 // ADDI x12, x0, 12 (flushed)
+00d00693 // ADDI x13, x0, 13
+0020d463 // BGE x1, x2, +8
+00e00713 // ADDI x14, x0, 14 (flushed)
+00f00793 // ADDI x15, x0, 15

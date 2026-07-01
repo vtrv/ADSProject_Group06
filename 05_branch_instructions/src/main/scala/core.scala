@@ -81,9 +81,14 @@ class PipelinedRV32Icore(BinaryFile: String) extends Module {
   val forwardingUnit = Module(new ForwardingUnit)
 
   // --- IF -> IF Barrier ---
+  ifStage.io.redirectValid := exStage.io.redirect
+  ifStage.io.redirectPC := exStage.io.redirectTarget
+  ifBarrier.io.flush := exStage.io.redirect
+  ifBarrier.io.inPC := ifStage.io.pcOut
   ifBarrier.io.inInstr := ifStage.io.instr
 
   // --- IF Barrier -> ID ---
+  idStage.io.pc := ifBarrier.io.outPC
   idStage.io.instr := ifBarrier.io.outInstr
 
   // --- ID <-> Register File (read ports) ---
@@ -94,17 +99,23 @@ class PipelinedRV32Icore(BinaryFile: String) extends Module {
   idStage.io.regFileResp_B.data := registerFile.io.resp_2.data
 
   // --- ID -> ID Barrier ---
+  idBarrier.io.flush := exStage.io.redirect
   idBarrier.io.inUOP := idStage.io.uop
   idBarrier.io.inRD := idStage.io.rd
   idBarrier.io.inRS1 := idStage.io.rs1Out
   idBarrier.io.inRS2 := idStage.io.rs2Out
   idBarrier.io.inOperandA := idStage.io.operandA
   idBarrier.io.inOperandB := idStage.io.operandB
+  idBarrier.io.inPC := idStage.io.pcOut
+  idBarrier.io.inImm := idStage.io.immOut
+  idBarrier.io.inWrEn := idStage.io.wrEn
   idBarrier.io.inXcptInvalid := idStage.io.XcptInvalid
 
   // --- ID Barrier -> EX (with forwarding muxes) ---
   exStage.io.uop := idBarrier.io.outUOP
   exStage.io.rd := idBarrier.io.outRD
+  exStage.io.pc := idBarrier.io.outPC
+  exStage.io.imm := idBarrier.io.outImm
   exStage.io.XcptInvalid := idBarrier.io.outXcptInvalid
 
   // --- Forwarding Unit connections ---
@@ -140,7 +151,9 @@ class PipelinedRV32Icore(BinaryFile: String) extends Module {
   // --- EX -> EX Barrier ---
   exBarrier.io.inAluResult := exStage.io.aluResult
   exBarrier.io.inRD := exStage.io.rdOut
-  exBarrier.io.inWrEn := true.B // All R-type and I-type instructions write back
+  // Write enable is computed in ID and carried through the ID barrier (same
+  // instruction slot as the EX stage), so route it around the EX stage.
+  exBarrier.io.inWrEn := idBarrier.io.outWrEn
   exBarrier.io.inXcptInvalid := exStage.io.exception
 
   // --- EX Barrier -> MEM Barrier (MEM stage is empty, pass through) ---
@@ -152,6 +165,7 @@ class PipelinedRV32Icore(BinaryFile: String) extends Module {
   // --- MEM Barrier -> WB ---
   wbStage.io.aluResult := memBarrier.io.outAluResult
   wbStage.io.rd := memBarrier.io.outRD
+  wbStage.io.wrEn := memBarrier.io.outWrEn
 
   // --- WB <-> Register File (write port) ---
   registerFile.io.req_3.addr := wbStage.io.regFileReq.addr

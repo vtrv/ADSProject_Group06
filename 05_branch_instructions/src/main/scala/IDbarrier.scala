@@ -42,12 +42,16 @@ import uopc._
 //ToDo: Add your implementation according to the specification above here 
 class IDBarrier extends Module {
   val io = IO(new Bundle {
+    val flush = Input(Bool())
     val inUOP = Input(uopc())
     val inRD = Input(UInt(5.W))
     val inRS1 = Input(UInt(5.W))
     val inRS2 = Input(UInt(5.W))
     val inOperandA = Input(UInt(32.W))
     val inOperandB = Input(UInt(32.W))
+    val inPC = Input(UInt(32.W))
+    val inImm = Input(UInt(32.W))
+    val inWrEn = Input(Bool())
     val inXcptInvalid = Input(Bool())
 
     val outUOP = Output(uopc())
@@ -56,6 +60,9 @@ class IDBarrier extends Module {
     val outRS2 = Output(UInt(5.W))
     val outOperandA = Output(UInt(32.W))
     val outOperandB = Output(UInt(32.W))
+    val outPC = Output(UInt(32.W))
+    val outImm = Output(UInt(32.W))
+    val outWrEn = Output(Bool())
     val outXcptInvalid = Output(Bool())
   })
 
@@ -65,15 +72,34 @@ class IDBarrier extends Module {
   val rs2Reg = RegInit(0.U(5.W))
   val operandAReg = RegInit(0.U(32.W))
   val operandBReg = RegInit(0.U(32.W))
+  val pcReg = RegInit(0.U(32.W))
+  val immReg = RegInit(0.U(32.W))
+  val wrEnReg = RegInit(false.B)
   val xcptReg = RegInit(false.B)
 
-  uopReg := io.inUOP
-  rdReg := io.inRD
-  rs1Reg := io.inRS1
-  rs2Reg := io.inRS2
-  operandAReg := io.inOperandA
-  operandBReg := io.inOperandB
-  xcptReg := io.inXcptInvalid
+  when(io.flush) {
+    uopReg := uopc.isNOP
+    rdReg := 0.U
+    rs1Reg := 0.U
+    rs2Reg := 0.U
+    operandAReg := 0.U
+    operandBReg := 0.U
+    pcReg := 0.U
+    immReg := 0.U
+    wrEnReg := false.B
+    xcptReg := false.B
+  }.otherwise {
+    uopReg := io.inUOP
+    rdReg := io.inRD
+    rs1Reg := io.inRS1
+    rs2Reg := io.inRS2
+    operandAReg := io.inOperandA
+    operandBReg := io.inOperandB
+    pcReg := io.inPC
+    immReg := io.inImm
+    wrEnReg := io.inWrEn
+    xcptReg := io.inXcptInvalid
+  }
 
   io.outUOP := uopReg
   io.outRD := rdReg
@@ -81,5 +107,8 @@ class IDBarrier extends Module {
   io.outRS2 := rs2Reg
   io.outOperandA := operandAReg
   io.outOperandB := operandBReg
+  io.outPC := pcReg
+  io.outImm := immReg
+  io.outWrEn := wrEnReg
   io.outXcptInvalid := xcptReg
 }
