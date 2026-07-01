@@ -41,3 +41,24 @@ import chisel3._
 // -----------------------------------------
 
 //ToDo: Add your implementation according to the specification above here 
+class WB extends Module {
+  val io = IO(new Bundle {
+    // Inputs from MEM barrier
+    val aluResult = Input(UInt(32.W))
+    val rd = Input(UInt(5.W))
+
+    // Register file write port
+    val regFileReq = Flipped(new regFileWriteReq)
+
+    // Output for verification
+    val check_res = Output(UInt(32.W))
+  })
+
+  // Forward ALU result to register file write port
+  io.regFileReq.addr := io.rd
+  io.regFileReq.data := io.aluResult
+  io.regFileReq.wr_en := true.B
+
+  // Output result for verification
+  io.check_res := io.aluResult
+}
