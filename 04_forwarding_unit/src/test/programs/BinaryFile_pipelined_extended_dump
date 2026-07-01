@@ -1,0 +1,28 @@
+// NOP = ADDI x0, x0, 0 (used as pipeline padding)
+
+// --- Section 1: I-type Immediate Instructions (negative/boundary values) ---
+fff00093 // ADDI  x1,  x0, -1        | x1  = 0xFFFFFFFF (-1)
+80000113 // ADDI  x2,  x0, -2048     | x2  = 0xFFFFF800 (-2048, min I-imm)
+7ff00193 // ADDI  x3,  x0, 2047      | x3  = 0x000007FF (2047, max I-imm)
+0ff0c213 // XORI  x4,  x1, 0x0FF     | x4  = 0xFFFFFF00  (0xFFFFFFFF ^ 0xFF)
+12306293 // ORI   x5,  x0, 0x123     | x5  = 0x00000123  (0 | 0x123)
+0ff0f313 // ANDI  x6,  x1, 0x0FF     | x6  = 0x000000FF  (0xFFFFFFFF & 0xFF)
+0000a393 // SLTI  x7,  x1, 0         | x7  = 1  (-1 < 0 signed → true)
+0010b413 // SLTIU x8,  x1, 1         | x8  = 0  (0xFFFFFFFF > 1 unsigned → false)
+
+// --- Section 2: Shift Immediate Edge Cases (shift by 0 and 31) ---
+fff00493 // ADDI  x9,  x0, -1        | x9  = 0xFFFFFFFF
+00049513 // SLLI  x10, x9, 0         | x10 = 0xFFFFFFFF  (no shift)
+01f49593 // SLLI  x11, x9, 31        | x11 = 0x80000000  (shift left 31)
+0004d613 // SRLI  x12, x9, 0         | x12 = 0xFFFFFFFF  (no shift)
+01f4d693 // SRLI  x13, x9, 31        | x13 = 0x00000001  (shift right logical 31)
+4004d713 // SRAI  x14, x9, 0         | x14 = 0xFFFFFFFF  (no shift, sign preserved)
+41f4d793 // SRAI  x15, x9, 31        | x15 = 0xFFFFFFFF  (arith shift, all sign bits)
+
+// --- Section 3: x0 Hardwiring ---
+3e700013 // ADDI  x0,  x0, 999       | ALU result = 999, but x0 stays 0
+00000c33 // ADD   x24, x0, x0        | x24 = 0   (x0 is still 0)
+
+// --- Section 4: Self-Referencing Operation ---
+00a00c93 // ADDI  x25, x0, 10        | x25 = 10
+019c8cb3 // ADD   x25, x25, x25      | x25 = 20  (10 + 10, no hazard at distance 4)

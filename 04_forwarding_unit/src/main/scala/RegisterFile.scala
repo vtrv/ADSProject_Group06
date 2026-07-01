@@ -31,31 +31,64 @@ Functionality:
     Synchronous write updates register if wr_en is asserted
 
 
-Special Case for hazard resolution:    
+Special Case for hazard resolution:
     If a register is read and written in the same clock cycle, send the new data to data output!
-*/
+ */
 
 // -----------------------------------------
 // Register File
 // -----------------------------------------
 
 class regFileReadReq extends Bundle {
-    //ToDo: implement bundle for read request
+  val addr = Input(UInt(5.W))
 }
 
 class regFileReadResp extends Bundle {
-    //ToDo: implement bundle for read response
+  val data = Output(UInt(32.W))
 }
 
 class regFileWriteReq extends Bundle {
-    //ToDo: implement bundle for write request
+  val addr = Input(UInt(5.W))
+  val data = Input(UInt(32.W))
+  val wr_en = Input(Bool())
 }
 
 class regFile extends Module {
   val io = IO(new Bundle {
-    //ToDo: Add I/O ports 
-})
+    val req_1 = new regFileReadReq
+    val resp_1 = new regFileReadResp
+    val req_2 = new regFileReadReq
+    val resp_2 = new regFileReadResp
+    val req_3 = new regFileWriteReq
+  })
 
-//ToDo: Add your implementation according to the specification above here 
+  // 32 registers, each 32 bits, initialized to 0
+  val regFile = RegInit(VecInit(Seq.fill(32)(0.U(32.W))))
 
+  // Read port 1: x0 is always 0, with same-cycle write-before-read bypass
+  io.resp_1.data := Mux(
+    io.req_1.addr === 0.U,
+    0.U,
+    Mux(
+      io.req_3.wr_en && io.req_3.addr =/= 0.U && io.req_1.addr === io.req_3.addr,
+      io.req_3.data,
+      regFile(io.req_1.addr)
+    )
+  )
+
+  // Read port 2: x0 is always 0, with same-cycle write-before-read bypass
+  io.resp_2.data := Mux(
+    io.req_2.addr === 0.U,
+    0.U,
+    Mux(
+      io.req_3.wr_en && io.req_3.addr =/= 0.U && io.req_2.addr === io.req_3.addr,
+      io.req_3.data,
+      regFile(io.req_2.addr)
+    )
+  )
+
+  // Write port: synchronous write, x0 cannot be written
+  when(io.req_3.wr_en && io.req_3.addr =/= 0.U) {
+    regFile(io.req_3.addr) := io.req_3.data
+  }
 }
