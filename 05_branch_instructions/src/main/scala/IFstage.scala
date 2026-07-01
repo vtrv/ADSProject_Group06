@@ -36,25 +36,25 @@ package core_tile
 import chisel3._
 import chisel3.util.experimental.loadMemoryFromFile
 
-// -----------------------------------------
-// Fetch Stage
-// -----------------------------------------
-
-class IF(BinaryFile: String) extends Module {
+class IF (BinaryFile: String) extends Module {
   val io = IO(new Bundle {
-    val instr = Output(UInt(32.W))
+    val redirectValid = Input(Bool())
+    val redirectPC    = Input(UInt(32.W))
+    val instr         = Output(UInt(32.W))
+    val pcOut         = Output(UInt(32.W))
   })
 
-  // Instruction memory: 4096 words x 32 bits
   val IMem = Mem(4096, UInt(32.W))
   loadMemoryFromFile(IMem, BinaryFile)
 
-  // Program counter, initialized to 0
   val PC = RegInit(0.U(32.W))
 
-  // Fetch instruction at current PC (word-aligned: PC >> 2 gives the word index)
-  io.instr := IMem(PC >> 2)
+  io.instr := IMem(PC >> 2.U)
+  io.pcOut := PC
 
-  // Increment PC by 4 (word-aligned) each cycle
-  PC := PC + 4.U
+  when (io.redirectValid) {
+    PC := io.redirectPC
+  } .otherwise {
+    PC := PC + 4.U
+  }
 }

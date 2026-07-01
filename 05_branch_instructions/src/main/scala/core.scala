@@ -51,118 +51,112 @@ package core_tile
 
 import chisel3._
 import chisel3.util._
-import chisel3.util.experimental.loadMemoryFromFile
 import Assignment02.{ALU, ALUOp}
 import uopc._
 
-
-class PipelinedRV32Icore(BinaryFile: String) extends Module {
+class PipelinedRV32Icore (BinaryFile: String) extends Module {
   val io = IO(new Bundle {
     val check_res = Output(UInt(32.W))
     val exception = Output(Bool())
   })
 
-  // --- Instantiate pipeline stages ---
-  val ifStage = Module(new IF(BinaryFile))
-  val ifBarrier = Module(new IFBarrier)
-  val idStage = Module(new ID)
-  val idBarrier = Module(new IDBarrier)
-  val exStage = Module(new EX)
-  val exBarrier = Module(new EXBarrier)
+  // Module Instantiations
+  val ifStage  = Module(new IF(BinaryFile))
+  val ifBar    = Module(new IFBarrier)
+  val idStage  = Module(new ID)
+  val idBar    = Module(new IDBarrier)
+  val exStage  = Module(new EX)
+  val exBar    = Module(new EXBarrier)
   val memStage = Module(new MEM)
-  val memBarrier = Module(new MEMBarrier)
-  val wbStage = Module(new WB)
-  val wbBarrier = Module(new WBBarrier)
+  val memBar   = Module(new MEMBarrier)
+  val wbStage  = Module(new WB)
+  val wbBar    = Module(new WBBarrier)
+  val rf       = Module(new regFile)
+  val fwdUnit  = Module(new ForwardingUnit)
 
-  // --- Instantiate Register File ---
-  val registerFile = Module(new regFile)
+  // Control Hazard Interconnection Wiring
+  val pipelineFlush = exStage.io.redirectValid
 
-  // --- Instantiate Forwarding Unit ---
-  val forwardingUnit = Module(new ForwardingUnit)
+  // IF Stage Interconnections
+  ifStage.io.redirectValid := exStage.io.redirectValid
+  ifStage.io.redirectPC    := exStage.io.redirectPC
 
-  // --- IF -> IF Barrier ---
-  ifBarrier.io.inInstr := ifStage.io.instr
+  // IF Stage → IF/ID Barrier
+  ifBar.io.inInstr := ifStage.io.instr
+  ifBar.io.inPC    := ifStage.io.pcOut
+  ifBar.io.flush   := pipelineFlush
 
-  // --- IF Barrier -> ID ---
-  idStage.io.instr := ifBarrier.io.outInstr
+  // IF/ID Barrier → ID Stage
+  idStage.io.instr := ifBar.io.outInstr
+  idStage.io.pcIn  := ifBar.io.outPC
 
-  // --- ID <-> Register File (read ports) ---
-  registerFile.io.req_1.addr := idStage.io.regFileReq_A.addr
-  idStage.io.regFileResp_A.data := registerFile.io.resp_1.data
+  // Register File ↔ ID Stage
+  rf.io.req_1              := idStage.io.regFileReq_A
+  idStage.io.regFileResp_A := rf.io.resp_1
+  rf.io.req_2              := idStage.io.regFileReq_B
+  idStage.io.regFileResp_B := rf.io.resp_2
 
-  registerFile.io.req_2.addr := idStage.io.regFileReq_B.addr
-  idStage.io.regFileResp_B.data := registerFile.io.resp_2.data
+  // ID Stage → ID/EX Barrier
+  idBar.io.inUOP         := idStage.io.uop
+  idBar.io.inRD          := idStage.io.rd
+  idBar.io.inRS1         := idStage.io.rs1
+  idBar.io.inRS2         := idStage.io.rs2
+  idBar.io.inOperandA    := idStage.io.operandA
+  idBar.io.inOperandB    := idStage.io.operandB
+  idBar.io.inImm         := idStage.io.immOut
+  idBar.io.inPC          := idStage.io.pcOut
+  idBar.io.inWrEn        := idStage.io.wrEn
+  idBar.io.inXcptInvalid := idStage.io.XcptInvalid
+  idBar.io.flush         := pipelineFlush
 
-  // --- ID -> ID Barrier ---
-  idBarrier.io.inUOP := idStage.io.uop
-  idBarrier.io.inRD := idStage.io.rd
-  idBarrier.io.inRS1 := idStage.io.rs1Out
-  idBarrier.io.inRS2 := idStage.io.rs2Out
-  idBarrier.io.inOperandA := idStage.io.operandA
-  idBarrier.io.inOperandB := idStage.io.operandB
-  idBarrier.io.inXcptInvalid := idStage.io.XcptInvalid
+  // Forwarding Unit Interconnections
+  fwdUnit.io.rs1_EX   := idBar.io.outRS1
+  fwdUnit.io.rs2_EX   := idBar.io.outRS2
+  fwdUnit.io.rd_MEM   := exBar.io.outRD
+  fwdUnit.io.wrEn_MEM := exBar.io.outWrEn
+  fwdUnit.io.rd_WB    := memBar.io.outRD
+  fwdUnit.io.wrEn_WB  := memBar.io.outWrEn
 
-  // --- ID Barrier -> EX (with forwarding muxes) ---
-  exStage.io.uop := idBarrier.io.outUOP
-  exStage.io.rd := idBarrier.io.outRD
-  exStage.io.XcptInvalid := idBarrier.io.outXcptInvalid
+  // ID/EX Barrier → EX Stage
+  exStage.io.uop          := idBar.io.outUOP
+  exStage.io.rd           := idBar.io.outRD
+  exStage.io.wrEn         := idBar.io.outWrEn
+  exStage.io.operandA     := idBar.io.outOperandA
+  exStage.io.operandB     := idBar.io.outOperandB
+  exStage.io.imm          := idBar.io.outImm
+  exStage.io.pc           := idBar.io.outPC
+  exStage.io.XcptInvalid  := idBar.io.outXcptInvalid
 
-  // --- Forwarding Unit connections ---
-  forwardingUnit.io.rs1_EX := idBarrier.io.outRS1
-  forwardingUnit.io.rs2_EX := idBarrier.io.outRS2
-  forwardingUnit.io.rd_MEM := exBarrier.io.outRD
-  forwardingUnit.io.rd_WB := memBarrier.io.outRD
-  forwardingUnit.io.wrEn_MEM := exBarrier.io.outWrEn
-  forwardingUnit.io.wrEn_WB := memBarrier.io.outWrEn
+  exStage.io.forwardA     := fwdUnit.io.forwardA
+  exStage.io.forwardB     := fwdUnit.io.forwardB
+  exStage.io.aluResultMEM := exBar.io.outAluResult   
+  exStage.io.aluResultWB  := memBar.io.outAluResult  
 
-  // --- Forwarding muxes (in core.scala per assignment specification) ---
-  // forwardA/B: 00 = no forwarding, 10 = forward from MEM (EX barrier), 01 = forward from WB (MEM barrier)
-  exStage.io.operandA := MuxLookup(
-    forwardingUnit.io.forwardA,
-    idBarrier.io.outOperandA,
-    Seq(
-      "b00".U -> idBarrier.io.outOperandA,
-      "b10".U -> exBarrier.io.outAluResult,
-      "b01".U -> memBarrier.io.outAluResult
-    )
-  )
+  // EX Stage → EX/MEM Barrier
+  exBar.io.inAluResult   := exStage.io.aluResult
+  exBar.io.inRD          := exStage.io.rdOut
+  exBar.io.inWrEn        := exStage.io.wrEnOut
+  exBar.io.inXcptInvalid := exStage.io.XcptInvalidOut
 
-  exStage.io.operandB := MuxLookup(
-    forwardingUnit.io.forwardB,
-    idBarrier.io.outOperandB,
-    Seq(
-      "b00".U -> idBarrier.io.outOperandB,
-      "b10".U -> exBarrier.io.outAluResult,
-      "b01".U -> memBarrier.io.outAluResult
-    )
-  )
+  // EX/MEM Barrier → MEM Stage → MEM/WB Barrier
+  memBar.io.inAluResult := exBar.io.outAluResult
+  memBar.io.inRD        := exBar.io.outRD
+  memBar.io.inWrEn      := exBar.io.outWrEn
+  memBar.io.inException := exBar.io.outXcptInvalid
 
-  // --- EX -> EX Barrier ---
-  exBarrier.io.inAluResult := exStage.io.aluResult
-  exBarrier.io.inRD := exStage.io.rdOut
-  exBarrier.io.inWrEn := true.B // All R-type and I-type instructions write back
-  exBarrier.io.inXcptInvalid := exStage.io.exception
+  // MEM/WB Barrier → WB Stage
+  wbStage.io.aluResult := memBar.io.outAluResult
+  wbStage.io.rd        := memBar.io.outRD
+  wbStage.io.wrEn      := memBar.io.outWrEn
+  wbStage.io.exception := memBar.io.outException
 
-  // --- EX Barrier -> MEM Barrier (MEM stage is empty, pass through) ---
-  memBarrier.io.inAluResult := exBarrier.io.outAluResult
-  memBarrier.io.inRD := exBarrier.io.outRD
-  memBarrier.io.inWrEn := exBarrier.io.outWrEn
-  memBarrier.io.inException := exBarrier.io.outXcptInvalid
+  // WB Stage → Register File Write Port
+  rf.io.req_3 := wbStage.io.regFileReq
 
-  // --- MEM Barrier -> WB ---
-  wbStage.io.aluResult := memBarrier.io.outAluResult
-  wbStage.io.rd := memBarrier.io.outRD
+  // WB Stage → WB Barrier → Top-level Outputs
+  wbBar.io.inCheckRes    := wbStage.io.check_res
+  wbBar.io.inXcptInvalid := wbStage.io.xcptOut
 
-  // --- WB <-> Register File (write port) ---
-  registerFile.io.req_3.addr := wbStage.io.regFileReq.addr
-  registerFile.io.req_3.data := wbStage.io.regFileReq.data
-  registerFile.io.req_3.wr_en := wbStage.io.regFileReq.wr_en
-
-  // --- WB -> WB Barrier ---
-  wbBarrier.io.inCheckRes := wbStage.io.check_res
-  wbBarrier.io.inXcptInvalid := memBarrier.io.outException
-
-  // --- WB Barrier -> Core outputs ---
-  io.check_res := wbBarrier.io.outCheckRes
-  io.exception := wbBarrier.io.outXcptInvalid
+  io.check_res := wbBar.io.outCheckRes
+  io.exception := wbBar.io.outXcptInvalid
 }

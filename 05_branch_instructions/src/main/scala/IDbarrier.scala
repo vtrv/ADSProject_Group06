@@ -35,51 +35,75 @@ package core_tile
 import chisel3._
 import uopc._
 
-// -----------------------------------------
-// ID-Barrier
-// -----------------------------------------
-
-//ToDo: Add your implementation according to the specification above here 
 class IDBarrier extends Module {
   val io = IO(new Bundle {
-    val inUOP = Input(uopc())
-    val inRD = Input(UInt(5.W))
-    val inRS1 = Input(UInt(5.W))
-    val inRS2 = Input(UInt(5.W))
-    val inOperandA = Input(UInt(32.W))
-    val inOperandB = Input(UInt(32.W))
+    val inUOP         = Input(uopc())
+    val inRD          = Input(UInt(5.W))
+    val inRS1         = Input(UInt(5.W))
+    val inRS2         = Input(UInt(5.W))
+    val inOperandA    = Input(UInt(32.W))
+    val inOperandB    = Input(UInt(32.W))
+    val inImm         = Input(UInt(32.W))
+    val inPC          = Input(UInt(32.W))
     val inXcptInvalid = Input(Bool())
+    val inWrEn        = Input(Bool())
+    val flush         = Input(Bool())
 
-    val outUOP = Output(uopc())
-    val outRD = Output(UInt(5.W))
-    val outRS1 = Output(UInt(5.W))
-    val outRS2 = Output(UInt(5.W))
-    val outOperandA = Output(UInt(32.W))
-    val outOperandB = Output(UInt(32.W))
+    val outUOP         = Output(uopc())
+    val outRD          = Output(UInt(5.W))
+    val outRS1         = Output(UInt(5.W))
+    val outRS2         = Output(UInt(5.W))
+    val outOperandA    = Output(UInt(32.W))
+    val outOperandB    = Output(UInt(32.W))
+    val outImm         = Output(UInt(32.W))
+    val outPC          = Output(UInt(32.W))
     val outXcptInvalid = Output(Bool())
+    val outWrEn        = Output(Bool())
   })
 
-  val uopReg = RegInit(uopc.isNOP)
-  val rdReg = RegInit(0.U(5.W))
-  val rs1Reg = RegInit(0.U(5.W))
-  val rs2Reg = RegInit(0.U(5.W))
-  val operandAReg = RegInit(0.U(32.W))
-  val operandBReg = RegInit(0.U(32.W))
-  val xcptReg = RegInit(false.B)
+  val uopReg         = RegInit(uopc.isNOP)
+  val rdReg          = RegInit(0.U(5.W))
+  val rs1Reg         = RegInit(0.U(5.W))
+  val rs2Reg         = RegInit(0.U(5.W))
+  val operandAReg    = RegInit(0.U(32.W))
+  val operandBReg    = RegInit(0.U(32.W))
+  val immReg         = RegInit(0.U(32.W))
+  val pcReg          = RegInit(0.U(32.W))
+  val xcptInvalidReg = RegInit(false.B)
+  val wrEnReg        = RegInit(false.B)
 
-  uopReg := io.inUOP
-  rdReg := io.inRD
-  rs1Reg := io.inRS1
-  rs2Reg := io.inRS2
-  operandAReg := io.inOperandA
-  operandBReg := io.inOperandB
-  xcptReg := io.inXcptInvalid
+  when (io.flush) {
+    uopReg         := uopc.isNOP
+    rdReg          := 0.U
+    rs1Reg         := 0.U
+    rs2Reg         := 0.U
+    operandAReg    := 0.U
+    operandBReg    := 0.U
+    immReg         := 0.U
+    pcReg          := 0.U
+    xcptInvalidReg := false.B
+    wrEnReg        := false.B
+  } .otherwise {
+    uopReg         := io.inUOP
+    rdReg          := io.inRD
+    rs1Reg         := io.inRS1
+    rs2Reg         := io.inRS2
+    operandAReg    := io.inOperandA
+    operandBReg    := io.inOperandB
+    immReg         := io.inImm
+    pcReg          := io.inPC
+    xcptInvalidReg := io.inXcptInvalid
+    wrEnReg        := io.inWrEn
+  }
 
-  io.outUOP := uopReg
-  io.outRD := rdReg
-  io.outRS1 := rs1Reg
-  io.outRS2 := rs2Reg
-  io.outOperandA := operandAReg
-  io.outOperandB := operandBReg
-  io.outXcptInvalid := xcptReg
+  io.outUOP         := uopReg
+  io.outRD          := rdReg
+  io.outRS1         := rs1Reg
+  io.outRS2         := rs2Reg
+  io.outOperandA    := operandAReg
+  io.outOperandB    := operandBReg
+  io.outImm         := immReg
+  io.outPC          := pcReg
+  io.outXcptInvalid := xcptInvalidReg
+  io.outWrEn        := wrEnReg
 }

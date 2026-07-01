@@ -41,170 +41,123 @@ import chisel3._
 import chisel3.util._
 import uopc._
 
-// -----------------------------------------
-// Decode Stage
-// -----------------------------------------
-
-//ToDo: Add your implementation according to the specification above here 
 class ID extends Module {
   val io = IO(new Bundle {
-    // Input from IF barrier
-    val instr = Input(UInt(32.W))
+    val instr         = Input(UInt(32.W))
+    val pcIn          = Input(UInt(32.W))
 
-    // Register file read port A (rs1)
-    val regFileReq_A = Flipped(new regFileReadReq)
-    val regFileResp_A = Flipped(new regFileReadResp)
+    val regFileReq_A  = Output(new regFileReadReq)
+    val regFileResp_A = Input(new regFileReadResp)
+    val regFileReq_B  = Output(new regFileReadReq)
+    val regFileResp_B = Input(new regFileReadResp)
 
-    // Register file read port B (rs2)
-    val regFileReq_B = Flipped(new regFileReadReq)
-    val regFileResp_B = Flipped(new regFileReadResp)
-
-    // Outputs to ID barrier
-    val uop = Output(uopc())
-    val rd = Output(UInt(5.W))
-    val rs1Out = Output(UInt(5.W))
-    val rs2Out = Output(UInt(5.W))
-    val operandA = Output(UInt(32.W))
-    val operandB = Output(UInt(32.W))
-    val XcptInvalid = Output(Bool())
+    val uop           = Output(uopc())
+    val rd            = Output(UInt(5.W))
+    val rs1           = Output(UInt(5.W))   
+    val rs2           = Output(UInt(5.W))   
+    val operandA      = Output(UInt(32.W))
+    val operandB      = Output(UInt(32.W))
+    val immOut        = Output(UInt(32.W))
+    val pcOut         = Output(UInt(32.W))
+    val wrEn          = Output(Bool())
+    val XcptInvalid   = Output(Bool())
   })
 
-  // Extract instruction fields
   val opcode = io.instr(6, 0)
-  val rd = io.instr(11, 7)
+  val rd     = io.instr(11, 7)
   val funct3 = io.instr(14, 12)
-  val rs1 = io.instr(19, 15)
-  val rs2 = io.instr(24, 20)
+  val rs1    = io.instr(19, 15)
+  val rs2    = io.instr(24, 20)
   val funct7 = io.instr(31, 25)
 
-  // Sign-extended 12-bit immediate (I-type)
-  val imm = Cat(Fill(20, io.instr(31)), io.instr(31, 20))
+  // Immediate Decoding Logic
+  val iImm = io.instr(31, 20)
+  val bImm = Cat(io.instr(31), io.instr(7), io.instr(30, 25), io.instr(11, 8), 0.U(1.W))
+  val jImm = Cat(io.instr(31), io.instr(19, 12), io.instr(20), io.instr(30, 21), 0.U(1.W))
 
-  // Send read requests to register file
+  val iImmSExt = Cat(Fill(20, iImm(11)), iImm).asUInt
+  val bImmSExt = Cat(Fill(19, bImm(12)), bImm).asUInt
+  val jImmSExt = Cat(Fill(11, jImm(20)), jImm).asUInt
+
   io.regFileReq_A.addr := rs1
   io.regFileReq_B.addr := rs2
+  io.operandA          := io.regFileResp_A.data
 
-  // R-type opcode: 0110011
-  val isRType = opcode === "b0110011".U
-  // I-type opcode: 0010011
-  val isIType = opcode === "b0010011".U
+  val uopWire      = WireDefault(uopc.isNOP)
+  val operandBWire = WireDefault(0.U(32.W))
+  val immWire      = WireDefault(0.U(32.W))
+  val xcptWire     = WireDefault(false.B)
+  val wrEnWire     = WireDefault(false.B)
 
-  // Default outputs
-  io.uop := uopc.isNOP
-  io.rd := rd
-  io.rs1Out := rs1
-  io.rs2Out := Mux(isRType, rs2, 0.U)
-  io.operandA := io.regFileResp_A.data
-  io.operandB := io.regFileResp_B.data
-  io.XcptInvalid := false.B
+  val isRType  = opcode === "b0110011".U
+  val isIType  = opcode === "b0010011".U
+  val isBType  = opcode === "b1100011".U
+  val isJal    = opcode === "b1101111".U
+  val isJalr   = opcode === "b1100111".U
 
-  when(isRType) {
-    io.operandB := io.regFileResp_B.data
-    switch(funct3) {
-      is("b000".U) {
-        when(funct7 === "b0000000".U) {
-          io.uop := uopc.isADD
-        }.elsewhen(funct7 === "b0100000".U) {
-          io.uop := uopc.isSUB
-        }.otherwise {
-          io.XcptInvalid := true.B
-        }
-      }
-      is("b001".U) {
-        when(funct7 === "b0000000".U) {
-          io.uop := uopc.isSLL
-        }.otherwise {
-          io.XcptInvalid := true.B
-        }
-      }
-      is("b010".U) {
-        when(funct7 === "b0000000".U) {
-          io.uop := uopc.isSLT
-        }.otherwise {
-          io.XcptInvalid := true.B
-        }
-      }
-      is("b011".U) {
-        when(funct7 === "b0000000".U) {
-          io.uop := uopc.isSLTU
-        }.otherwise {
-          io.XcptInvalid := true.B
-        }
-      }
-      is("b100".U) {
-        when(funct7 === "b0000000".U) {
-          io.uop := uopc.isXOR
-        }.otherwise {
-          io.XcptInvalid := true.B
-        }
-      }
-      is("b101".U) {
-        when(funct7 === "b0000000".U) {
-          io.uop := uopc.isSRL
-        }.elsewhen(funct7 === "b0100000".U) {
-          io.uop := uopc.isSRA
-        }.otherwise {
-          io.XcptInvalid := true.B
-        }
-      }
-      is("b110".U) {
-        when(funct7 === "b0000000".U) {
-          io.uop := uopc.isOR
-        }.otherwise {
-          io.XcptInvalid := true.B
-        }
-      }
-      is("b111".U) {
-        when(funct7 === "b0000000".U) {
-          io.uop := uopc.isAND
-        }.otherwise {
-          io.XcptInvalid := true.B
-        }
-      }
+  when (isRType) {
+    operandBWire := io.regFileResp_B.data
+    wrEnWire     := true.B
+    switch (funct3) {
+      is ("b000".U) { uopWire := Mux(funct7 === "b0000000".U, uopc.isADD, Mux(funct7 === "b0100000".U, uopc.isSUB, uopc.isInvalid)) }
+      is ("b100".U) { uopWire := Mux(funct7 === "b0000000".U, uopc.isXOR, uopc.isInvalid) }
+      is ("b110".U) { uopWire := Mux(funct7 === "b0000000".U, uopc.isOR,  uopc.isInvalid) }
+      is ("b111".U) { uopWire := Mux(funct7 === "b0000000".U, uopc.isAND, uopc.isInvalid) }
+      is ("b001".U) { uopWire := Mux(funct7 === "b0000000".U, uopc.isSLL, uopc.isInvalid) }
+      is ("b101".U) { uopWire := Mux(funct7 === "b0000000".U, uopc.isSRL, Mux(funct7 === "b0100000".U, uopc.isSRA, uopc.isInvalid)) }
+      is ("b010".U) { uopWire := Mux(funct7 === "b0000000".U, uopc.isSLT, uopc.isInvalid) }
+      is ("b011".U) { uopWire := Mux(funct7 === "b0000000".U, uopc.isSLTU, uopc.isInvalid) }
     }
-  }.elsewhen(isIType) {
-    io.operandB := imm
-    switch(funct3) {
-      is("b000".U) {
-        io.uop := uopc.isADDI
-      }
-      is("b001".U) {
-        when(funct7 === "b0000000".U) {
-          io.uop := uopc.isSLLI
-        }.otherwise {
-          io.XcptInvalid := true.B
-        }
-      }
-      is("b010".U) {
-        io.uop := uopc.isSLTI
-      }
-      is("b011".U) {
-        io.uop := uopc.isSLTIU
-      }
-      is("b100".U) {
-        io.uop := uopc.isXORI
-      }
-      is("b101".U) {
-        when(funct7 === "b0000000".U) {
-          io.uop := uopc.isSRLI
-        }.elsewhen(funct7 === "b0100000".U) {
-          io.uop := uopc.isSRAI
-        }.otherwise {
-          io.XcptInvalid := true.B
-        }
-      }
-      is("b110".U) {
-        io.uop := uopc.isORI
-      }
-      is("b111".U) {
-        io.uop := uopc.isANDI
-      }
+    when(uopWire === uopc.isInvalid) { xcptWire := true.B; wrEnWire := false.B }
+  } .elsewhen (isIType) {
+    operandBWire := iImmSExt
+    wrEnWire     := true.B
+    switch (funct3) {
+      is ("b000".U) { uopWire := uopc.isADDI  }
+      is ("b100".U) { uopWire := uopc.isXORI  }
+      is ("b110".U) { uopWire := uopc.isORI   }
+      is ("b111".U) { uopWire := uopc.isANDI  }
+      is ("b010".U) { uopWire := uopc.isSLTI  }
+      is ("b011".U) { uopWire := uopc.isSLTIU }
+      is ("b001".U) { uopWire := Mux(funct7 === "b0000000".U, uopc.isSLLI, uopc.isInvalid) }
+      is ("b101".U) { uopWire := Mux(funct7 === "b0000000".U, uopc.isSRLI, Mux(funct7 === "b0100000".U, uopc.isSRAI, uopc.isInvalid)) }
     }
-  }.otherwise {
-    // Not a valid R-type or I-type instruction
-    // Everything else is invalid (except NOP which is encoded as ADDI)
-    when(opcode =/= 0.U) {
-      io.XcptInvalid := true.B
+    when(uopWire === uopc.isInvalid) { xcptWire := true.B; wrEnWire := false.B }
+  } .elsewhen (isBType) {
+    operandBWire := io.regFileResp_B.data
+    immWire      := bImmSExt
+    switch (funct3) {
+      is ("b000".U) { uopWire := uopc.isBEQ  }
+      is ("b001".U) { uopWire := uopc.isBNE  }
+      is ("b100".U) { uopWire := uopc.isBLT  }
+      is ("b101".U) { uopWire := uopc.isBGE  }
+      is ("b110".U) { uopWire := uopc.isBLTU }
+      is ("b111".U) { uopWire := uopc.isBGEU }
     }
+  } .elsewhen (isJal) {
+    immWire      := jImmSExt
+    uopWire      := uopc.isJAL
+    wrEnWire     := true.B
+    operandBWire := 4.U // JAL writes PC + 4 to rd
+  } .elsewhen (isJalr) {
+    immWire      := iImmSExt
+    uopWire      := uopc.isJALR
+    wrEnWire     := true.B
+    operandBWire := 4.U // JALR writes PC + 4 to rd
+    switch (funct3) {
+      is ("b000".U) { uopWire := uopc.isJALR }
+      otherwise     { xcptWire := true.B; wrEnWire := false.B }
+    }
+  } .otherwise {
+    xcptWire := true.B
   }
+
+  io.uop         := uopWire
+  io.rd          := rd
+  io.rs1         := rs1
+  io.rs2         := rs2
+  io.immOut      := immWire
+  io.pcOut       := io.pcIn
+  io.wrEn        := wrEnWire
+  io.XcptInvalid := xcptWire
 }

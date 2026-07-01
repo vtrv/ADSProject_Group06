@@ -38,60 +38,110 @@ import chisel3.util._
 import Assignment02.{ALU, ALUOp}
 import uopc._
 
-// -----------------------------------------
-// Execute Stage
-// -----------------------------------------
-
-//ToDo: Add your implementation according to the specification above here 
 class EX extends Module {
   val io = IO(new Bundle {
-    val uop = Input(uopc())
-    val operandA = Input(UInt(32.W))
-    val operandB = Input(UInt(32.W))
-    val rd = Input(UInt(5.W))
+    val uop         = Input(uopc())
+    val operandA    = Input(UInt(32.W))   
+    val operandB    = Input(UInt(32.W))   
+    val imm         = Input(UInt(32.W))
+    val pc          = Input(UInt(32.W))
+    val rd          = Input(UInt(5.W))
+    val wrEn        = Input(Bool())
     val XcptInvalid = Input(Bool())
 
-    val aluResult = Output(UInt(32.W))
-    val rdOut = Output(UInt(5.W))
-    val exception = Output(Bool())
+    val forwardA    = Input(UInt(2.W))
+    val forwardB    = Input(UInt(2.W))
+
+    val aluResultMEM = Input(UInt(32.W))  
+    val aluResultWB  = Input(UInt(32.W))  
+
+    val aluResult      = Output(UInt(32.W))
+    val rdOut          = Output(UInt(5.W))
+    val wrEnOut        = Output(Bool())
+    val XcptInvalidOut = Output(Bool())
+
+    // Control Flow Redirection Interface
+    val redirectValid  = Output(Bool())
+    val redirectPC     = Output(UInt(32.W))
   })
 
-  // Instantiate ALU from Assignment02
   val alu = Module(new ALU)
 
-  // Pass operands to ALU
-  alu.io.operandA := io.operandA
-  alu.io.operandB := io.operandB
-
-  // Default ALU operation
-  alu.io.operation := ALUOp.ADD
-
-  // Map uopc to ALUOp
-  switch(io.uop) {
-    is(uopc.isADD) { alu.io.operation := ALUOp.ADD }
-    is(uopc.isADDI) { alu.io.operation := ALUOp.ADD }
-    is(uopc.isSUB) { alu.io.operation := ALUOp.SUB }
-    is(uopc.isSLL) { alu.io.operation := ALUOp.SLL }
-    is(uopc.isSLLI) { alu.io.operation := ALUOp.SLL }
-    is(uopc.isSLT) { alu.io.operation := ALUOp.SLT }
-    is(uopc.isSLTI) { alu.io.operation := ALUOp.SLT }
-    is(uopc.isSLTU) { alu.io.operation := ALUOp.SLTU }
-    is(uopc.isSLTIU) { alu.io.operation := ALUOp.SLTU }
-    is(uopc.isXOR) { alu.io.operation := ALUOp.XOR }
-    is(uopc.isXORI) { alu.io.operation := ALUOp.XOR }
-    is(uopc.isSRL) { alu.io.operation := ALUOp.SRL }
-    is(uopc.isSRLI) { alu.io.operation := ALUOp.SRL }
-    is(uopc.isSRA) { alu.io.operation := ALUOp.SRA }
-    is(uopc.isSRAI) { alu.io.operation := ALUOp.SRA }
-    is(uopc.isOR) { alu.io.operation := ALUOp.OR }
-    is(uopc.isORI) { alu.io.operation := ALUOp.OR }
-    is(uopc.isAND) { alu.io.operation := ALUOp.AND }
-    is(uopc.isANDI) { alu.io.operation := ALUOp.AND }
-    is(uopc.isNOP) { alu.io.operation := ALUOp.ADD }
+  // Forwarding Multiplexer A
+  val aluInputA = WireDefault(io.operandA)
+  switch (io.forwardA) {
+    is ("b01".U) { aluInputA := io.aluResultWB }   
+    is ("b10".U) { aluInputA := io.aluResultMEM }  
   }
 
-  // Outputs
-  io.aluResult := alu.io.aluResult
-  io.rdOut := io.rd
-  io.exception := io.XcptInvalid
+  // Forwarding Multiplexer B
+  val aluInputB = WireDefault(io.operandB)
+  switch (io.forwardB) {
+    is ("b01".U) { aluInputB := io.aluResultWB }   
+    is ("b10".U) { aluInputB := io.aluResultMEM }  
+  }
+
+  // Pure Combinational Branch Condition Solver (Pre-ALU Register)
+  val isBranch = io.uop === uopc.isBEQ  || io.uop === uopc.isBNE  || 
+                 io.uop === uopc.isBLT  || io.uop === uopc.isBGE  || 
+                 io.uop === uopc.isBLTU || io.uop === uopc.isBGEU
+  val isJump   = io.uop === uopc.isJAL  || io.uop === uopc.isJALR
+
+  val opAsSInt = aluInputA.asSInt
+  val opBsSInt = aluInputB.asSInt
+
+  val branchConditionMet = WireDefault(false.B)
+  switch (io.uop) {
+    is (uopc.isBEQ)  { branchConditionMet := aluInputA === aluInputB }
+    is (uopc.isBNE)  { branchConditionMet := aluInputA =/= aluInputB }
+    is (uopc.isBLT)  { branchConditionMet := opAsSInt < opBsSInt }
+    is (uopc.isBGE)  { branchConditionMet := opAsSInt >= opBsSInt }
+    is (uopc.isBLTU) { branchConditionMet := aluInputA < aluInputB }
+    is (uopc.isBGEU) { branchConditionMet := aluInputA >= aluInputB }
+  }
+
+  val branchTaken = isBranch && branchConditionMet
+  io.redirectValid := branchTaken || isJump
+
+  // Target Address Resolution
+  val targetPC = WireDefault(0.U(32.W))
+  when (io.uop === uopc.isJALR) {
+    targetPC := (aluInputA + io.imm) & "hfffffffe".U // Clear least significant bit per RISC-V spec
+  } .otherwise {
+    targetPC := io.pc + io.imm
+  }
+  io.redirectPC := targetPC
+
+  // Setup ALU standard execution paths
+  val aluOp = WireDefault(ALUOp.NOP)
+  val finalAluB = WireDefault(aluInputB)
+
+  // Map control instructions to write execution links (PC + 4 link calculation)
+  when (isJump) {
+    aluOp := ALUOp.ADD
+    alu.io.operandA := io.pc
+    alu.io.operandB := 4.U
+  } .otherwise {
+    alu.io.operandA := aluInputA
+    alu.io.operandB := aluInputB
+    switch (io.uop) {
+      is (uopc.isADD, uopc.isADDI)   { aluOp := ALUOp.ADD  }
+      is (uopc.isSUB)                { aluOp := ALUOp.SUB  }
+      is (uopc.isXOR, uopc.isXORI)   { aluOp := ALUOp.XOR  }
+      is (uopc.isOR,  uopc.isORI)    { aluOp := ALUOp.OR   }
+      is (uopc.isAND, uopc.isANDI)   { aluOp := ALUOp.AND  }
+      is (uopc.isSLL, uopc.isSLLI)   { aluOp := ALUOp.SLL  }
+      is (uopc.isSRL, uopc.isSRLI)   { aluOp := ALUOp.SRL  }
+      is (uopc.isSRA, uopc.isSRAI)   { aluOp := ALUOp.SRA  }
+      is (uopc.isSLT, uopc.isSLTI)   { aluOp := ALUOp.SLT  }
+      is (uopc.isSLTU,uopc.isSLTIU)  { aluOp := ALUOp.SLTU }
+    }
+  }
+
+  alu.io.operation := aluOp
+
+  io.aluResult      := alu.io.aluResult
+  io.rdOut          := io.rd
+  io.wrEnOut        := Mux(isBranch, false.B, io.wrEn) // Guard register writes on branches
+  io.XcptInvalidOut := io.XcptInvalid || alu.io.exception
 }
